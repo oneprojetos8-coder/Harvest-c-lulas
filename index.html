@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBNA - Gestão de Células</title>
+    <title>Harvest - Gestão de Células</title>
     <link rel="stylesheet" href="style.css">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,9 +20,9 @@
     <div id="login-overlay" class="login-overlay">
         <div class="login-card">
             <div style="text-align: center; margin-bottom: 2rem;">
-                <i data-lucide="church" style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 1rem;"></i>
-                <h2>Sistema de Gestão CBNA</h2>
-                <p style="color: var(--text-muted)">Selecione seu acesso para continuar</p>
+                <i data-lucide="sprout" style="width: 48px; height: 48px; color: var(--success); margin-bottom: 1rem;"></i>
+                <h2>Harvest</h2>
+                <p style="color: var(--text-muted)">Organização e Crescimento de Células</p>
             </div>
             <div class="login-options" id="login-options-initial">
                 <button class="btn login-btn" onclick="showTokenInput('pastor')">
@@ -76,7 +76,10 @@
 
     <!-- Sidebar Navigation -->
     <aside id="main-sidebar" style="display: none;">
-        <h1><i data-lucide="church"></i> <span>CBNA Células</span></h1>
+        <div class="logo" style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; color: white;">
+            <i data-lucide="sprout" style="color: var(--success);"></i>
+            <span style="font-size: 1.5rem; font-weight: 700;">Harvest</span>
+        </div>
         <ul class="nav-links">
             <li class="pastor-only">
                 <a href="#" class="nav-link active" onclick="switchView('pastor-view')">
@@ -98,9 +101,11 @@
             </li>
             <li class="leader-only">
                 <a href="#" class="nav-link" id="nav-leader" onclick="switchView('leader-view')">
-                    <i data-lucide="users"></i>
-                    <span>Minha Célula</span>
-                </a>
+            <div class="logo">
+                <i data-lucide="sprout" style="color: #00b894;"></i>
+                <span>Harvest</span>
+            </div>
+    </a>
             </li>
             <li class="leader-only">
                 <a href="#" class="nav-link" onclick="switchView('report-form')">
