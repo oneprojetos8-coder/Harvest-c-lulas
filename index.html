@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBNA - Gestão de Células</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <i data-lucide="church" style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 1rem;"></i>
+                <h2>Sistema de Gestão CBNA</h2>
+                <p style="color: var(--text-muted)">Selecione seu acesso para continuar</p>
+            </div>
+            <div class="login-options" id="login-options-initial">
+                <button class="btn login-btn" onclick="showTokenInput('pastor')">
+                    <i data-lucide="shield-check"></i>
+                    <span>Acesso Pastoral</span>
+                </button>
+                <button class="btn login-btn" onclick="showTokenInput('leader')">
+                    <i data-lucide="user"></i>
+                    <span>Acesso do Líder</span>
+                </button>
+            </div>
+            <div id="token-login-form" style="display: none; margin-top: 1rem;">
+                <div id="pastor-login-fields" style="display: none;">
+                    <h3 id="auth-title" style="margin-bottom: 1rem;">Entrar como Pastor</h3>
+                    <input type="email" id="login-email" placeholder="Seu e-mail pastoral" style="margin-bottom: 0.8rem;">
+                    
+                    <div class="password-wrapper" style="position: relative;">
+                        <input type="password" id="login-password" placeholder="Sua senha" style="margin-bottom: 1rem; width: 100%;">
+                        <button type="button" class="password-toggle" onclick="togglePassword('login-password')" style="position: absolute; right: 10px; top: 12px; border: none; background: none; color: var(--text-muted); cursor: pointer;">
+                            <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                        </button>
+                    </div>
+
+                    <div id="signup-extra-fields" style="display: none;">
+                        <div class="password-wrapper" style="position: relative;">
+                            <input type="password" id="signup-password-confirm" placeholder="Confirme sua senha" style="margin-bottom: 1rem; width: 100%;">
+                            <button type="button" class="password-toggle" onclick="togglePassword('signup-password-confirm')" style="position: absolute; right: 10px; top: 12px; border: none; background: none; color: var(--text-muted); cursor: pointer;">
+                                <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="leader-login-fields" style="display: none;">
+                    <input type="text" id="login-token" placeholder="Digite seu Token de Acesso" style="margin-bottom: 1rem;">
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-login-confirm" class="btn btn-primary" style="flex: 1;" onclick="validateAccess()">Entrar</button>
+                    <button class="btn" style="background: #eee;" onclick="resetLogin()">Voltar</button>
+                </div>
+                
+                <div id="pastor-auth-toggle" style="margin-top: 1.5rem; text-align: center; display: none;">
+                    <a href="#" id="auth-toggle-link" onclick="toggleAuthMode()" style="font-size: 0.85rem; color: var(--accent);">Não tem uma conta? Criar conta</a>
+                </div>
+
+                <p id="auth-error" style="color: var(--danger); font-size: 0.8rem; margin-top: 1rem; display: none;"></p>
+                <p id="auth-success" style="color: var(--success); font-size: 0.8rem; margin-top: 1rem; display: none;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="main-sidebar" style="display: none;">
+        <h1><i data-lucide="church"></i> <span>CBNA Células</span></h1>
+        <ul class="nav-links">
+            <li class="pastor-only">
+                <a href="#" class="nav-link active" onclick="switchView('pastor-view')">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Painel Pastoral</span>
+                </a>
+            </li>
+            <li class="pastor-only">
+                <a href="#" class="nav-link" onclick="switchView('pastor-cells')">
+                    <i data-lucide="list"></i>
+                    <span>Células & Tokens</span>
+                </a>
+            </li>
+            <li class="pastor-only">
+                <a href="#" class="nav-link" onclick="switchView('pastor-notes')">
+                    <i data-lucide="book-open"></i>
+                    <span>Anotações</span>
+                </a>
+            </li>
+            <li class="leader-only">
+                <a href="#" class="nav-link" id="nav-leader" onclick="switchView('leader-view')">
+                    <i data-lucide="users"></i>
+                    <span>Minha Célula</span>
+                </a>
+            </li>
+            <li class="leader-only">
+                <a href="#" class="nav-link" onclick="switchView('report-form')">
+                    <i data-lucide="file-plus"></i>
+                    <span>Novo Relatório</span>
+                </a>
+            </li>
+            <li class="leader-only">
+                <a href="#" class="nav-link" onclick="switchView('cell-setup')">
+                    <i data-lucide="settings"></i>
+                    <span>Configurar Célula</span>
+                </a>
+            </li>
+            <li style="margin-top: 2rem;">
+                <a href="#" class="nav-link" onclick="handleLogout()" style="color: var(--danger)">
+                    <i data-lucide="log-out"></i>
+                    <span>Sair</span>
+                </a>
+            </li>
+        </ul>
+        <div class="user-profile" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="font-size: 0.8rem; opacity: 0.7;">Conectado como</p>
+            <p style="font-weight: 600;" id="current-user-role">---</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" style="display: none;">
+        
+        <!-- PASTOR VIEW (DASHBOARD) -->
+        <section id="pastor-view" class="view-section active">
+            <div class="header">
+                <div>
+                    <h1>Painel Pastoral</h1>
+                    <p style="color: var(--text-muted)">Acompanhamento estratégico da rede de células</p>
+                </div>
+                <button class="btn btn-primary" onclick="switchView('pastor-notes')">
+                    <i data-lucide="file-text"></i> Minhas Notas
+                </button>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="card">
+                    <div class="card-title">Total de Membros</div>
+                    <div class="card-value" id="metric-total-members">0</div>
+                    <div class="card-trend trend-up"><i data-lucide="trending-up"></i> Total consolidado</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Visitantes (30 dias)</div>
+                    <div class="card-value" id="metric-total-visitors">0</div>
+                    <div class="card-trend trend-up"><i data-lucide="user-plus"></i> Novas pessoas</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Taxa de Conversão</div>
+                    <div class="card-value" id="metric-conversion-rate">0%</div>
+                    <div class="card-trend"><i data-lucide="target"></i> Eficiência real</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Células Ativas</div>
+                    <div class="card-value" id="metric-active-cells">0</div>
+                    <div class="card-trend"><i data-lucide="home"></i> Grupos ativos</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 1rem;"><i data-lucide="line-chart" style="width: 18px; vertical-align: middle;"></i> Crescimento Semanal</h3>
+                    <canvas id="growthChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 1rem;"><i data-lucide="bar-chart" style="width: 18px; vertical-align: middle;"></i> Desempenho das Células</h3>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Alerts / Critical Eye -->
+            <div class="card alerts-card" style="margin-top: 1.5rem; border-left: 4px solid var(--danger);">
+                <h3 style="display: flex; align-items: center; gap: 8px; color: var(--danger);">
+                    <i data-lucide="alert-triangle"></i> Olhar Crítico (Alertas)
+                </h3>
+                <div class="table-container">
+                    <table id="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Célula</th>
+                                <th>Problema Detectado</th>
+                                <th>Última Reunião</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NEW: ACTIVE CELLS TABLE IN DASHBOARD -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="users"></i> Visão Geral das Células
+                    </h3>
+                    <button class="btn" style="padding: 4px 12px; font-size: 0.8rem; background: #eee;" onclick="switchView('pastor-cells')">Gerenciar Acessos</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome da Célula</th>
+                                <th>Líderes</th>
+                                <th>Membros (Hoje)</th>
+                                <th>Última Reunião</th>
+                                <th>Ver</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-cells-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- CELL DETAILS VIEW (For Pastor) -->
+        <section id="cell-details" class="view-section">
+            <div class="header">
+                <div>
+                    <h1 id="detail-cell-name">Detalhes da Célula</h1>
+                    <p style="color: var(--text-muted)" id="detail-cell-leaders">Liderança: ---</p>
+                </div>
+                <button class="btn" style="background: #eee; display: flex; align-items: center; gap: 8px;" onclick="switchView('pastor-view')">
+                    <i data-lucide="arrow-left"></i> Voltar ao Painel
+                </button>
+            </div>
+
+            <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="card">
+                    <div class="card-title">Média de Membros</div>
+                    <div class="card-value" id="detail-metric-members">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Frequência</div>
+                    <div class="card-value" id="detail-metric-frequency">0%</div>
+                </div>
+            </div>
+
+            <div class="chart-container" style="margin-top: 1.5rem; height: 300px;">
+                <h3 style="margin-bottom: 1rem;">Evolução da Presença</h3>
+                <canvas id="detailGrowthChart"></canvas>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <h3>Histórico Individual</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Membros</th>
+                                <th>Visitantes</th>
+                                <th>Foto</th>
+                                <th>Realizada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-history-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PASTOR CELLS & TOKENS VIEW -->
+        <section id="pastor-cells" class="view-section">
+            <div class="header">
+                <h1>Gerenciamento de Células</h1>
+                <button class="btn btn-primary" onclick="generateToken()">
+                    <i data-lucide="plus-circle"></i> Novo Acesso
+                </button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
+                <div class="card">
+                    <h3>Células Ativas</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Célula</th>
+                                    <th>Líder</th>
+                                    <th>Token</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-cells-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Gerar Novo Acesso</h3>
+                    <div class="form-group">
+                        <label>Nome da Célula/Líder</label>
+                        <input type="text" id="token-cell-name" placeholder="Ex: Célula Videira">
+                    </div>
+                    <div class="form-group">
+                        <label>Token Personalizado (Opcional)</label>
+                        <input type="text" id="token-custom-code" placeholder="Ex: VIDEIRA10" style="text-transform: uppercase;">
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Deixe em branco para gerar um aleatório.</small>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="generateToken()">Criar Acesso</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PASTOR NOTES VIEW -->
+        <section id="pastor-notes" class="view-section">
+            <div class="header">
+                <h1>Anotações Pastorais</h1>
+                <button class="btn btn-primary" onclick="createNewNote()">
+                    <i data-lucide="plus"></i> Nova Nota
+                </button>
+            </div>
+            
+            <div class="notes-container" style="display: grid; grid-template-columns: 300px 1fr; gap: 0; background: white; border-radius: 12px; overflow: hidden; height: 600px; border: 1px solid #eee; box-shadow: var(--shadow);">
+                <!-- Notes List (Sidebar) -->
+                <div class="notes-sidebar" style="border-right: 1px solid #eee; background: #f9f9f9; overflow-y: auto;">
+                    <div id="notes-list-empty" style="padding: 2rem; text-align: center; color: var(--text-muted); display: none;">
+                        Nenhuma nota ainda.
+                    </div>
+                    <div id="notes-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Note Editor -->
+                <div class="note-editor" style="display: flex; flex-direction: column; background: white;">
+                    <div style="padding: 1rem; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                        <span id="note-date" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+                        <div style="display: flex; gap: 10px;">
+                            <span id="save-status" style="font-size: 0.8rem; color: var(--success); margin-right: 1rem;"></span>
+                            <button class="btn btn-primary" style="padding: 6px 15px; font-size: 0.85rem;" onclick="saveActiveNote()">Salvar</button>
+                            <button class="btn" style="padding: 6px 15px; font-size: 0.85rem; background: #fee2e2; color: #ef4444;" onclick="deleteActiveNote()">Excluir</button>
+                        </div>
+                    </div>
+                    <input type="text" id="note-title-input" placeholder="Título da Nota" style="width: 100%; padding: 1.5rem 2rem 0.5rem 2rem; border: none; font-size: 1.5rem; font-weight: 700; outline: none;">
+                    <textarea id="pastor-notes-area" style="flex: 1; width: 100%; padding: 0.5rem 2rem 2rem 2rem; border: none; outline: none; font-size: 1.1rem; line-height: 1.6; resize: none;" placeholder="Comece a escrever..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- TOKEN EDIT MODAL (Simple Overlay) -->
+        <div id="edit-token-modal" class="login-overlay" style="display: none; background: rgba(0,0,0,0.5);">
+            <div class="login-card" style="max-width: 500px;">
+                <h2 style="margin-bottom: 1.5rem;">Editar Acesso</h2>
+                <div class="form-group">
+                    <label>Nome da Célula</label>
+                    <input type="text" id="edit-token-cell-name">
+                </div>
+                <div class="form-group">
+                    <label>Código do Token</label>
+                    <input type="text" id="edit-token-code" style="text-transform: uppercase;">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="saveTokenEdit()">Salvar Alterações</button>
+                    <button class="btn" style="flex: 1; background: #eee;" onclick="closeTokenModal()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEADER VIEW -->
+        <section id="leader-view" class="view-section">
+            <div class="header">
+                <div>
+                    <h1>Minha Célula</h1>
+                    <p style="color: var(--text-muted)">Acompanhamento de crescimento e reuniões</p>
+                </div>
+                <button class="btn btn-primary" onclick="switchView('report-form')">
+                    <i data-lucide="plus-circle"></i> Novo Relatório
+                </button>
+            </div>
+
+            <!-- Leader Metrics Dashboard -->
+            <div class="metrics-grid">
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(58, 134, 255, 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <span class="card-title" style="margin: 0;">Presença Média</span>
+                    </div>
+                    <div class="card-value" id="leader-metric-members">0</div>
+                </div>
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(46, 125, 50, 0.1); color: #2e7d32; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <span class="card-title" style="margin: 0;">Visitantes (Total)</span>
+                    </div>
+                    <div class="card-value" id="leader-metric-visitors">0</div>
+                </div>
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255, 152, 0, 0.1); color: #f57c00; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <span class="card-title" style="margin: 0;">Frequência</span>
+                    </div>
+                    <div class="card-value" id="leader-metric-frequency">0%</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 1rem;">Histórico de Presença</h3>
+                    <canvas id="leaderGrowthChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <h3>Histórico de Reuniões</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Membros</th>
+                                <th>Visitantes</th>
+                                <th>Foto</th>
+                                <th>Realizada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW REPORT FORM -->
+        <section id="report-form" class="view-section">
+            <div class="header">
+                <div>
+                    <h1>Novo Relatório de Célula</h1>
+                    <p style="color: var(--text-muted)">Preencha os dados da reunião de hoje</p>
+                </div>
+                <button class="btn" style="background: #eee" onclick="switchView('leader-view')">Cancelar</button>
+            </div>
+
+            <div class="card form-card">
+                <form id="cell-report-form">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Data</label>
+                            <input type="date" id="form-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome da Célula</label>
+                            <input type="text" id="form-cell-name" list="cell-list" placeholder="Ex: Célula Ebenézer" required>
+                            <datalist id="cell-list">
+                                <!-- Populated by JS -->
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Líderes Responsáveis</label>
+                            <input type="text" id="form-leaders" placeholder="Nomes dos líderes" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Local</label>
+                            <input type="text" id="form-location" placeholder="Endereço ou ambiente">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Horário Início</label>
+                            <input type="time" id="form-start-time">
+                        </div>
+                        <div class="form-group">
+                            <label>Horário Término</label>
+                            <input type="time" id="form-end-time">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Qtd. Membros Presentes</label>
+                            <input type="number" id="form-members" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Qtd. Visitantes</label>
+                            <input type="number" id="form-visitors" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>A célula ocorreu?</label>
+                        <select id="form-occurred">
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>O que aconteceu na célula? (Testemunhos, observações)</label>
+                        <textarea id="form-notes" rows="4" placeholder="Conte-nos como foi..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Foto da Reunião</label>
+                        <input type="file" id="form-photo" accept="image/*">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Capture um momento especial da sua célula!</p>
+                    </div>
+
+                    <div style="text-align: right; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="send"></i> Enviar Relatório
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- CELL SETUP VIEW (LEADER ONLY) -->
+        <section id="cell-setup" class="view-section">
+            <div class="header">
+                <div>
+                    <h1>Configuração da Célula</h1>
+                    <p style="color: var(--text-muted)">Defina as informações básicas da sua célula</p>
+                </div>
+            </div>
+            <div class="card form-card">
+                <form id="cell-setup-form">
+                    <div class="form-group">
+                        <label>Nome da Célula</label>
+                        <input type="text" id="setup-cell-name" readonly style="background: #f8f9fa;">
+                    </div>
+                    <div class="form-group">
+                        <label>Líderes Responsáveis</label>
+                        <input type="text" id="setup-leaders" placeholder="Nomes dos líderes" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Local de Reunião</label>
+                        <input type="text" id="setup-location" placeholder="Endereço" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Dia da Semana</label>
+                        <select id="setup-day">
+                            <option value="segunda">Segunda-feira</option>
+                            <option value="terca">Terça-feira</option>
+                            <option value="quarta">Quarta-feira</option>
+                            <option value="quinta">Quinta-feira</option>
+                            <option value="sexta">Sexta-feira</option>
+                            <option value="sabado">Sábado</option>
+                            <option value="domingo">Domingo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário Padrão</label>
+                        <input type="time" id="setup-time" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Configurações</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
