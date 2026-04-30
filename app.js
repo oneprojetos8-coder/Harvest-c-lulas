@@ -881,17 +881,24 @@ async function viewCellDetails(cellName) {
         }
     });
 
-    // History Table
+    // History Table (Sorted newest first)
     const tbody = document.getElementById('detail-history-body');
     tbody.innerHTML = '';
-    cellReports.forEach(r => {
+    
+    const sortedReports = [...cellReports].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    sortedReports.forEach(r => {
         const tr = document.createElement('tr');
+        const formattedDate = new Date(r.date + 'T12:00:00').toLocaleDateString();
+        const photoHtml = r.photo_url ? `<img src="${r.photo_url}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="viewPhoto('${r.photo_url}')">` : '---';
+        const occurredIcon = (r.occurred === 'sim' || r.occurred === true) ? '✅' : '❌';
+
         tr.innerHTML = `
-            <td>${r.date}</td>
-            <td>${r.members}</td>
-            <td>${r.visitors}</td>
-            <td>${r.photo ? `<img src="${r.photo}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="viewPhoto('${r.photo}')">` : '-'}</td>
-            <td>${r.occurred === 'sim' ? '✅' : '❌'}</td>
+            <td>${formattedDate}</td>
+            <td>${r.members || 0}</td>
+            <td>${r.visitors || 0}</td>
+            <td>${photoHtml}</td>
+            <td>${occurredIcon}</td>
         `;
         tbody.appendChild(tr);
     });
