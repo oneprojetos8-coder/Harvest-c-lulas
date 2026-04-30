@@ -126,7 +126,13 @@ async function validateAccess() {
                 if (password !== confirm) throw new Error('As senhas não coincidem!');
                 if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres.');
 
-                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                const { data, error } = await supabaseClient.auth.signUp({ 
+                    email, 
+                    password,
+                    options: {
+                        data: { role: 'pastor' }
+                    }
+                });
 
                 if (error) {
                     if (error.message.includes('already registered')) {
