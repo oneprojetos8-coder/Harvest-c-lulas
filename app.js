@@ -1123,6 +1123,11 @@ function setFinancialFilter(filter, button) {
 }
 
 function switchFinancialTab(tab) {
+    const isFinance = canEditFinances();
+    if (tab === 'manual' && !isFinance) {
+        tab = 'summary';
+    }
+
     currentFinancialTab = tab;
     document.getElementById('finance-tab-summary').classList.toggle('active', tab === 'summary');
     document.getElementById('finance-tab-manual').classList.toggle('active', tab === 'manual');
@@ -1198,6 +1203,7 @@ function formatBRL(value) {
 
 function updateFinancialDashboard() {
     const { startDate, endDate } = getFinancialDateRange();
+    const isFinance = canEditFinances();
 
     const filteredTithes = filterFinancialData(state.tithes, startDate, endDate);
     const filteredOfferings = filterFinancialData(state.offerings, startDate, endDate);
@@ -1208,20 +1214,30 @@ function updateFinancialDashboard() {
     const totalOfferings = filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
     const totalSpecialOfferings = filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
 
-    const positiveTransactions = filteredTransactions.filter(t => t.type !== 'manual_expense');
-    const negativeTransactions = filteredTransactions.filter(t => t.type === 'manual_expense');
-    const totalIncomes = positiveTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const totalExpenses = negativeTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualIncomes = filteredTransactions.filter(t => t.type === 'manual_income');
+    const manualExpenses = filteredTransactions.filter(t => t.type === 'manual_expense');
+    const totalIncomes = manualIncomes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalExpenses = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const totalAmount = totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes - totalExpenses;
-    const totalContributions = filteredTithes.length + filteredOfferings.length + filteredSpecialOfferings.length + positiveTransactions.length;
+    const totalContributions = filteredTithes.length + filteredOfferings.length + filteredSpecialOfferings.length + manualIncomes.length;
 
     document.getElementById('financial-total-month').innerText = formatBRL(totalAmount);
     document.getElementById('financial-inflows').innerText = formatBRL(totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes);
     document.getElementById('financial-outflows').innerText = formatBRL(totalExpenses);
+    document.getElementById('financial-balance').innerText = formatBRL(totalAmount);
     document.getElementById('financial-tithes').innerText = formatBRL(totalTithes);
     document.getElementById('financial-offerings').innerText = formatBRL(totalOfferings);
     document.getElementById('financial-contributions').innerText = totalContributions;
+
+    document.getElementById('finance-tab-manual').style.display = isFinance ? 'inline-flex' : 'none';
+    document.getElementById('financial-manual-warning').classList.toggle('hidden', isFinance);
+    document.getElementById('financial-manual-form').classList.toggle('hidden', !isFinance);
+
+    if (!isFinance && currentFinancialTab === 'manual') {
+        currentFinancialTab = 'summary';
+        switchFinancialTab('summary');
+    }
 
     const previousPeriod = getPreviousPeriod(startDate, endDate);
     const prevFilteredTithes = filterFinancialData(state.tithes, previousPeriod.startDate, previousPeriod.endDate);
@@ -1257,7 +1273,7 @@ function updateFinancialDashboard() {
         }
     }
 
-    updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings, positiveTransactions, negativeTransactions);
+    updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings, manualIncomes, manualExpenses);
     updateFinancialChart(startDate, endDate);
     updateMainFinancialCard(totalAmount, growth);
     updateManualTransactionsTable();
@@ -1412,8 +1428,9 @@ function updateFinancialChart(startDate, endDate) {
         }
     });
 
-    const labels = Object.keys(weeks).sort();
-    const data = labels.map(label => weeks[label]);
+    const entries = Object.entries(weeks).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+    const labels = entries.map(entry => entry[0]);
+    const data = entries.map(entry => entry[1]);
 
     if (financialChart) financialChart.destroy();
 

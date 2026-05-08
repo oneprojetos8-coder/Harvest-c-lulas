@@ -400,6 +400,11 @@
                         <div class="card-trend"><i data-lucide="arrow-up-right"></i> Receitas totais</div>
                     </div>
                     <div class="card">
+                        <div class="card-title">Saldo Líquido</div>
+                        <div class="card-value" id="financial-balance">R$ 0</div>
+                        <div class="card-trend" id="financial-balance-trend"><i data-lucide="shield-check"></i> Saúde do caixa</div>
+                    </div>
+                    <div class="card">
                         <div class="card-title">Saídas</div>
                         <div class="card-value" id="financial-outflows">R$ 0</div>
                         <div class="card-trend trend-down"><i data-lucide="arrow-down-right"></i> Despesas manuais</div>
@@ -452,7 +457,11 @@
             </div>
 
             <div id="financial-manual-section" class="hidden" style="margin-top: 1.5rem;">
-                <div class="card">
+                <div id="financial-manual-warning" class="card hidden" style="background: #fff8e1; border-color: #ffecb3;">
+                    <h3>Acesso restrito</h3>
+                    <p>Somente usuários com perfil financeiro podem registrar lançamentos manuais.</p>
+                </div>
+                <div id="financial-manual-form" class="card">
                     <h3>Lançamento Manual</h3>
                     <div class="form-group">
                         <label>Tipo</label>
@@ -504,25 +513,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-
-            <div class="card" style="margin-top: 1.5rem;">
-                <h3>Resumo por Tipo</h3>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th>Quantidade</th>
-                                <th>Total</th>
-                                <th>Média</th>
-                            </tr>
-                        </thead>
-                        <tbody id="financial-summary-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </section>
