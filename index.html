@@ -99,6 +99,12 @@
                     <span>Anotações</span>
                 </a>
             </li>
+            <li class="pastor-only">
+                <a href="#" class="nav-link" onclick="switchView('pastor-financial')">
+                    <i data-lucide="dollar-sign"></i>
+                    <span>Financeiro</span>
+                </a>
+            </li>
             <li class="leader-only">
                 <a href="#" class="nav-link" id="nav-leader" onclick="switchView('leader-view')">
             <div class="logo">
@@ -169,28 +175,11 @@
                     <div class="card-value" id="metric-active-cells">0</div>
                     <div class="card-trend"><i data-lucide="home"></i> Grupos ativos</div>
                 </div>
-            </div>
-
-            <!-- Charts -->
-            <div class="charts-grid">
-                <div class="chart-container">
-                    <h3 style="margin-bottom: 1rem;"><i data-lucide="line-chart" style="width: 18px; vertical-align: middle;"></i> Crescimento Semanal</h3>
-                    <canvas id="growthChart"></canvas>
+                <div class="card financial-card" onclick="switchView('pastor-financial')">
+                    <div class="card-title">Financeiro</div>
+                    <div class="card-value" id="metric-financial-total">R$ 0</div>
+                    <div class="card-trend" id="metric-financial-trend"><i data-lucide="dollar-sign"></i> Ver detalhes</div>
                 </div>
-                <div class="chart-container">
-                    <h3 style="margin-bottom: 1rem;"><i data-lucide="bar-chart" style="width: 18px; vertical-align: middle;"></i> Desempenho das Células</h3>
-                    <canvas id="performanceChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Alerts / Critical Eye -->
-            <div class="card alerts-card" style="margin-top: 1.5rem; border-left: 4px solid var(--danger);">
-                <h3 style="display: flex; align-items: center; gap: 8px; color: var(--danger);">
-                    <i data-lucide="alert-triangle"></i> Olhar Crítico (Alertas)
-                </h3>
-                <div class="table-container">
-                    <table id="alerts-table">
-                        <thead>
                             <tr>
                                 <th>Célula</th>
                                 <th>Problema Detectado</th>
@@ -358,6 +347,93 @@
                     </div>
                     <input type="text" id="note-title-input" placeholder="Título da Nota" style="width: 100%; padding: 1.5rem 2rem 0.5rem 2rem; border: none; font-size: 1.5rem; font-weight: 700; outline: none;">
                     <textarea id="pastor-notes-area" style="flex: 1; width: 100%; padding: 0.5rem 2rem 2rem 2rem; border: none; outline: none; font-size: 1.1rem; line-height: 1.6; resize: none;" placeholder="Comece a escrever..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- PASTOR FINANCIAL VIEW -->
+        <section id="pastor-financial" class="view-section">
+            <div class="header">
+                <div>
+                    <h1>Painel Financeiro</h1>
+                    <p style="color: var(--text-muted)">Acompanhamento de dízimos, ofertas e arrecadações</p>
+                </div>
+                <button class="btn" style="background: #eee; display: flex; align-items: center; gap: 8px;" onclick="switchView('pastor-view')">
+                    <i data-lucide="arrow-left"></i> Voltar ao Painel
+                </button>
+            </div>
+
+            <!-- Financial Filters -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn filter-btn active" onclick="setFinancialFilter('month')">Mês</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('week')">Semana</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('year')">Ano</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('today')">Hoje</button>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="font-size: 0.9rem;">Período personalizado:</label>
+                        <input type="date" id="financial-start-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <span>até</span>
+                        <input type="date" id="financial-end-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <button class="btn btn-primary" style="padding: 4px 12px;" onclick="setFinancialFilter('custom')">Aplicar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="card">
+                    <div class="card-title">Total Arrecadado</div>
+                    <div class="card-value" id="financial-total-month">R$ 0</div>
+                    <div class="card-trend" id="financial-growth-trend"><i data-lucide="trending-up"></i> vs mês anterior</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total de Dízimos</div>
+                    <div class="card-value" id="financial-tithes">R$ 0</div>
+                    <div class="card-trend"><i data-lucide="dollar-sign"></i> Contribuições regulares</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Total de Ofertas</div>
+                    <div class="card-value" id="financial-offerings">R$ 0</div>
+                    <div class="card-trend"><i data-lucide="heart"></i> Ofertas voluntárias</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Contribuições</div>
+                    <div class="card-value" id="financial-contributions">0</div>
+                    <div class="card-trend"><i data-lucide="users"></i> Número de doações</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Última Contribuição</div>
+                    <div class="card-value" id="financial-last-contribution">Nenhuma</div>
+                    <div class="card-trend"><i data-lucide="clock"></i> Data e valor</div>
+                </div>
+            </div>
+
+            <!-- Financial Chart -->
+            <div class="chart-container" style="margin-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;"><i data-lucide="line-chart" style="width: 18px; vertical-align: middle;"></i> Evolução Financeira</h3>
+                <canvas id="financialChart"></canvas>
+            </div>
+
+            <!-- Financial Summary Table -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <h3>Resumo por Tipo</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Total</th>
+                                <th>Média</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financial-summary-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>

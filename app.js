@@ -6,7 +6,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let state = {
     reports: [],
     cells: [],
-    tokens: []
+    tokens: [],
+    tithes: [],
+    offerings: [],
+    specialOfferings: [],
+    campaigns: [],
+    financialTransactions: []
 };
 
 // Initialize App
@@ -539,6 +544,7 @@ function switchView(viewId) {
     }
     if (viewId === 'pastor-cells') renderAllCells();
     if (viewId === 'pastor-notes') loadPastorNotes();
+    if (viewId === 'pastor-financial') updateFinancialDashboard();
     if (viewId === 'cell-details') {
         // Detalhes individuais já chamam o próprio update
     }
@@ -617,19 +623,34 @@ function preFillReportForm() {
 async function loadData() {
     console.log('Buscando dados atualizados...');
     try {
-        const [rRes, cRes, tRes] = await Promise.all([
+        const [rRes, cRes, tRes, tithesRes, offeringsRes, specialRes, campaignsRes, transRes] = await Promise.all([
             supabaseClient.from('reports').select('*').order('date', { ascending: false }),
             supabaseClient.from('cells').select('*'),
-            supabaseClient.from('tokens').select('*')
+            supabaseClient.from('tokens').select('*'),
+            supabaseClient.from('tithes').select('*').order('date', { ascending: false }),
+            supabaseClient.from('offerings').select('*').order('date', { ascending: false }),
+            supabaseClient.from('special_offerings').select('*').order('date', { ascending: false }),
+            supabaseClient.from('campaigns').select('*'),
+            supabaseClient.from('financial_transactions').select('*').order('date', { ascending: false })
         ]);
 
         if (rRes.error) throw rRes.error;
         if (cRes.error) throw cRes.error;
         if (tRes.error) throw tRes.error;
+        if (tithesRes.error) throw tithesRes.error;
+        if (offeringsRes.error) throw offeringsRes.error;
+        if (specialRes.error) throw specialRes.error;
+        if (campaignsRes.error) throw campaignsRes.error;
+        if (transRes.error) throw transRes.error;
 
         state.reports = rRes.data || [];
         state.cells = cRes.data || [];
         state.tokens = tRes.data || [];
+        state.tithes = tithesRes.data || [];
+        state.offerings = offeringsRes.data || [];
+        state.specialOfferings = specialRes.data || [];
+        state.campaigns = campaignsRes.data || [];
+        state.financialTransactions = transRes.data || [];
 
         console.log('Sincronização concluída! Atualizando interface...');
         
@@ -638,6 +659,7 @@ async function loadData() {
         updateDashboard();
         renderHistory();
         renderAllCells();
+        updateFinancialDashboard();
     } catch (error) {
         console.error('Erro de sincronização:', error);
     }
@@ -764,6 +786,7 @@ function updateDashboard() {
 
     updateCharts();
     checkAlerts();
+    updateFinancialDashboard();
 }
 
 let growthChart = null;
@@ -1085,4 +1108,240 @@ function viewPhoto(data) {
 
 function contactLeader(cellName) {
     alert(`Redirecionando para o WhatsApp do líder da ${cellName}...`);
+}
+
+// FINANCIAL DASHBOARD FUNCTIONS
+let currentFinancialFilter = 'month';
+let financialChart = null;
+
+function setFinancialFilter(filter) {
+    currentFinancialFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    updateFinancialDashboard();
+}
+
+function getFinancialDateRange() {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (currentFinancialFilter) {
+        case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            break;
+        case 'week':
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            break;
+        case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            break;
+        case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+            break;
+        case 'custom':
+            const startInput = document.getElementById('financial-start-date').value;
+            const endInput = document.getElementById('financial-end-date').value;
+            if (startInput && endInput) {
+                startDate = new Date(startInput);
+                endDate = new Date(endInput + 'T23:59:59');
+            } else {
+                // Default to month if custom dates not set
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            }
+            break;
+        default:
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    }
+
+    return { startDate, endDate };
+}
+
+function filterFinancialData(data, startDate, endDate) {
+    return data.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= startDate && itemDate <= endDate;
+    });
+}
+
+function updateFinancialDashboard() {
+    const { startDate, endDate } = getFinancialDateRange();
+
+    // Filter data by date range
+    const filteredTithes = filterFinancialData(state.tithes, startDate, endDate);
+    const filteredOfferings = filterFinancialData(state.offerings, startDate, endDate);
+    const filteredSpecialOfferings = filterFinancialData(state.specialOfferings, startDate, endDate);
+
+    // Calculate totals
+    const totalTithes = filteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalOfferings = filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
+    const totalSpecialOfferings = filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+    const totalAmount = totalTithes + totalOfferings + totalSpecialOfferings;
+
+    const totalContributions = filteredTithes.length + filteredOfferings.length + filteredSpecialOfferings.length;
+
+    // Update metrics
+    document.getElementById('financial-total-month').innerText = `R$ ${totalAmount.toFixed(2)}`;
+    document.getElementById('financial-tithes').innerText = `R$ ${totalTithes.toFixed(2)}`;
+    document.getElementById('financial-offerings').innerText = `R$ ${totalOfferings.toFixed(2)}`;
+    document.getElementById('financial-contributions').innerText = totalContributions;
+
+    // Calculate growth compared to previous period
+    const previousPeriod = getPreviousPeriod(startDate, endDate);
+    const prevFilteredTithes = filterFinancialData(state.tithes, previousPeriod.startDate, previousPeriod.endDate);
+    const prevFilteredOfferings = filterFinancialData(state.offerings, previousPeriod.startDate, previousPeriod.endDate);
+    const prevFilteredSpecialOfferings = filterFinancialData(state.specialOfferings, previousPeriod.startDate, previousPeriod.endDate);
+    const prevTotal = prevFilteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) +
+                     prevFilteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) +
+                     prevFilteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+
+    const growth = prevTotal > 0 ? ((totalAmount - prevTotal) / prevTotal * 100) : 0;
+    const growthElement = document.getElementById('financial-growth-trend');
+    growthElement.innerHTML = `<i data-lucide="${growth >= 0 ? 'trending-up' : 'trending-down'}"></i> ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs período anterior`;
+    growthElement.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
+
+    // Last contribution
+    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings]
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (allContributions.length > 0) {
+        const last = allContributions[0];
+        const dateStr = new Date(last.date).toLocaleDateString('pt-BR');
+        document.getElementById('financial-last-contribution').innerText = `R$ ${parseFloat(last.amount).toFixed(2)} (${dateStr})`;
+    } else {
+        document.getElementById('financial-last-contribution').innerText = 'Nenhuma';
+    }
+
+    // Update summary table
+    updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings);
+
+    // Update chart
+    updateFinancialChart(startDate, endDate);
+
+    // Update main dashboard financial card
+    updateMainFinancialCard(totalAmount, growth);
+
+    lucide.createIcons();
+}
+
+function getPreviousPeriod(startDate, endDate) {
+    const diff = endDate.getTime() - startDate.getTime();
+    const prevEndDate = new Date(startDate.getTime() - 1);
+    const prevStartDate = new Date(prevEndDate.getTime() - diff);
+
+    return { startDate: prevStartDate, endDate: prevEndDate };
+}
+
+function updateFinancialSummaryTable(tithes, offerings, specialOfferings) {
+    const tbody = document.getElementById('financial-summary-body');
+    if (!tbody) return;
+
+    const tithesCount = tithes.length;
+    const tithesTotal = tithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const tithesAvg = tithesCount > 0 ? tithesTotal / tithesCount : 0;
+
+    const offeringsCount = offerings.length;
+    const offeringsTotal = offerings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
+    const offeringsAvg = offeringsCount > 0 ? offeringsTotal / offeringsCount : 0;
+
+    const specialCount = specialOfferings.length;
+    const specialTotal = specialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+    const specialAvg = specialCount > 0 ? specialTotal / specialCount : 0;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Dízimos</td>
+            <td>${tithesCount}</td>
+            <td>R$ ${tithesTotal.toFixed(2)}</td>
+            <td>R$ ${tithesAvg.toFixed(2)}</td>
+        </tr>
+        <tr>
+            <td>Ofertas</td>
+            <td>${offeringsCount}</td>
+            <td>R$ ${offeringsTotal.toFixed(2)}</td>
+            <td>R$ ${offeringsAvg.toFixed(2)}</td>
+        </tr>
+        <tr>
+            <td>Ofertas Especiais</td>
+            <td>${specialCount}</td>
+            <td>R$ ${specialTotal.toFixed(2)}</td>
+            <td>R$ ${specialAvg.toFixed(2)}</td>
+        </tr>
+    `;
+}
+
+function updateFinancialChart(startDate, endDate) {
+    const ctx = document.getElementById('financialChart');
+    if (!ctx) return;
+
+    // Group data by week for the chart
+    const weeks = {};
+    const allData = [...state.tithes, ...state.offerings, ...state.specialOfferings];
+
+    allData.forEach(item => {
+        const date = new Date(item.date);
+        if (date >= startDate && date <= endDate) {
+            const weekKey = getWeekKey(date);
+            if (!weeks[weekKey]) weeks[weekKey] = 0;
+            weeks[weekKey] += parseFloat(item.amount || 0);
+        }
+    });
+
+    const labels = Object.keys(weeks).sort();
+    const data = labels.map(label => weeks[label]);
+
+    if (financialChart) financialChart.destroy();
+
+    financialChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Arrecadação Semanal',
+                data: data,
+                borderColor: '#001f3f',
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(0, 31, 63, 0.05)',
+                pointBackgroundColor: '#3a86ff'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function getWeekKey(date) {
+    const year = date.getFullYear();
+    const weekNum = Math.ceil((date - new Date(year, 0, 1)) / (7 * 24 * 60 * 60 * 1000));
+    return `Semana ${weekNum}/${year}`;
+}
+
+function updateMainFinancialCard(totalAmount, growth) {
+    const card = document.getElementById('metric-financial-total');
+    const trend = document.getElementById('metric-financial-trend');
+
+    if (card) card.innerText = `R$ ${totalAmount.toFixed(2)}`;
+    if (trend) {
+        trend.innerHTML = `<i data-lucide="${growth >= 0 ? 'trending-up' : 'trending-down'}"></i> ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
+        trend.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
+    }
 }
