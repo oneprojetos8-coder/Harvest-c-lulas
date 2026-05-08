@@ -581,6 +581,38 @@ body.role-treasurer .leader-only {
     background: rgba(255, 255, 255, 0.98);
     border: none;
     box-shadow: 0 18px 40px rgba(24, 58, 89, 0.06);
+    transition: all 0.3s ease;
+}
+
+.financial-filter-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.filter-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.filter-toggle-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.filter-toggle-btn i {
+    width: 16px;
+    height: 16px;
 }
 
 .financial-filter-card > .financial-filter-group {

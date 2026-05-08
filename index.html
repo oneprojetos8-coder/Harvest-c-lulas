@@ -394,7 +394,13 @@
             </div>
 
             <!-- Financial Filters -->
-            <div class="card financial-filter-card">
+            <div class="financial-filter-header">
+                <button class="btn filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFinancialFilter()">
+                    <i data-lucide="filter"></i>
+                    <span>Filtros</span>
+                </button>
+            </div>
+            <div class="card financial-filter-card" id="financial-filter-content" style="display: none;">
                 <div class="financial-filter-group">
                     <button class="btn filter-btn active" onclick="setFinancialFilter('month', this)">Mês</button>
                     <button class="btn filter-btn" onclick="setFinancialFilter('week', this)">Semana</button>

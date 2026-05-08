@@ -78,6 +78,23 @@ function switchFinancialTab(tabName) {
     currentFinancialTab = tabName;
 }
 
+// Função para alternar a visibilidade do filtro financeiro
+function toggleFinancialFilter() {
+    const filterContent = document.getElementById('financial-filter-content');
+    const toggleBtn = document.getElementById('filter-toggle-btn');
+    
+    if (filterContent.style.display === 'none' || filterContent.style.display === '') {
+        filterContent.style.display = 'grid';
+        toggleBtn.innerHTML = '<i data-lucide="x"></i><span>Ocultar Filtros</span>';
+    } else {
+        filterContent.style.display = 'none';
+        toggleBtn.innerHTML = '<i data-lucide="filter"></i><span>Filtros</span>';
+    }
+    
+    // Re-render Lucide icons
+    lucide.createIcons();
+}
+
 // Função para gerar relatórios
 async function generateReport() {
     const reportType = document.getElementById('report-type').value;
