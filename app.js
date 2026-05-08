@@ -190,6 +190,8 @@ async function validateAccess() {
 
             if (pendingRole === 'leader') {
                 query = query.or('role.eq.leader,role.is.null');
+            } else if (pendingRole === 'treasurer') {
+                query = query.or('role.eq.treasurer,role.is.null');
             } else {
                 query = query.eq('role', pendingRole);
             }
@@ -344,7 +346,7 @@ async function generateToken() {
 
     const newToken = {
         code: tokenCode,
-        cell_name: role === 'leader' ? cellName : null,
+        cell_name: role === 'leader' ? cellName : cellName || 'Tesoureiro',
         role: role
     };
 
@@ -958,7 +960,8 @@ async function viewCellDetails(cellName) {
     sortedReports.forEach(r => {
         const tr = document.createElement('tr');
         const formattedDate = new Date(r.date + 'T12:00:00').toLocaleDateString();
-        const photoHtml = r.photo_url ? `<img src="${r.photo_url}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="viewPhoto('${r.photo_url}')">` : '---';
+        const photoSource = r.photo || r.photo_url;
+        const photoHtml = photoSource ? `<img src="${photoSource}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="viewPhoto('${photoSource}')">` : '---';
         const occurredIcon = (r.occurred === 'sim' || r.occurred === true) ? '✅' : '❌';
 
         tr.innerHTML = `
@@ -1184,7 +1187,8 @@ function switchFinancialTab(tab) {
 }
 
 function canEditFinances() {
-    return sessionStorage.getItem('cbna_user_role') === 'financeiro';
+    const role = sessionStorage.getItem('cbna_user_role');
+    return role === 'financeiro' || role === 'treasurer';
 }
 
 function getFinancialDateRange() {
@@ -1304,7 +1308,7 @@ function updateFinancialDashboard() {
         growthElement.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
     }
 
-    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings, ...positiveTransactions]
+    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings, ...manualIncomes]
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const lastContribElement = document.getElementById('financial-last-contribution');
