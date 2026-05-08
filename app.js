@@ -186,7 +186,15 @@ async function validateAccess() {
             }
         } else {
             const tokenInput = document.getElementById('login-token').value || document.getElementById('treasurer-token').value;
-            const { data: tokens, error } = await supabaseClient.from('tokens').select('*').eq('code', tokenInput).eq('role', pendingRole);
+            let query = supabaseClient.from('tokens').select('*').eq('code', tokenInput);
+
+            if (pendingRole === 'leader') {
+                query = query.or('role.eq.leader,role.is.null');
+            } else {
+                query = query.eq('role', pendingRole);
+            }
+
+            const { data: tokens, error } = await query;
             if (error) throw error;
 
             if (tokens && tokens.length > 0) {
