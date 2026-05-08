@@ -47,13 +47,48 @@ async function testSupabaseConnection() {
     }
 }
 
+// Função para forçar login (debug)
+async function forceLogin() {
+    console.log('🚪 Forçando login...');
+    const role = prompt('Digite o tipo de usuário (pastor/leader/treasurer):', 'pastor');
+    const cell = prompt('Digite o nome da célula (ou deixe vazio para pastor):', role === 'pastor' ? 'Administração' : '');
+
+    if (role) {
+        console.log('✅ Forçando login como:', role, cell);
+        sessionStorage.setItem('cbna_user_role', role);
+        sessionStorage.setItem('cbna_user_cell', cell || 'Administração');
+        await handleLogin(role, cell || 'Administração');
+    }
+}
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Inicializando aplicação...');
+
+    // Check for existing session
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const role = sessionStorage.getItem('cbna_user_role');
+    const cell = sessionStorage.getItem('cbna_user_cell');
+
+    console.log('📋 Estado inicial:', {
+        hasSession: !!session,
+        role: role,
+        cell: cell,
+        pendingRole: pendingRole
+    });
+
     // Independentemente de estar logado ou não, vamos carregar os dados públicos
     // Mas para os privados, precisamos do login.
     if (session) {
-        const role = sessionStorage.getItem('cbna_user_role') || 'pastor';
-        const cell = sessionStorage.getItem('cbna_user_cell') || 'Administração';
+        console.log('✅ Sessão ativa encontrada, fazendo login automático...');
+        const userRole = sessionStorage.getItem('cbna_user_role') || 'pastor';
+        const userCell = sessionStorage.getItem('cbna_user_cell') || 'Administração';
+        await handleLogin(userRole, userCell);
+    } else if (role) {
+        console.log('✅ Role encontrada no sessionStorage, fazendo login automático...');
         await handleLogin(role, cell);
     } else {
+        console.log('❌ Nenhuma sessão ou role encontrada, mostrando tela de login...');
         await checkAuth();
     }
 
@@ -167,6 +202,7 @@ function resetLogin() {
 }
 
 async function validateAccess() {
+    console.log('🔑 Validando acesso para role:', pendingRole);
     const errorEl = document.getElementById('auth-error');
     const successEl = document.getElementById('auth-success');
     errorEl.style.display = 'none';
@@ -174,10 +210,12 @@ async function validateAccess() {
 
     try {
         if (pendingRole === 'pastor') {
+            console.log('👨‍⚖️ Login como pastor...');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
             if (isSignUpMode) {
+                console.log('📝 Modo cadastro...');
                 const confirm = document.getElementById('signup-password-confirm').value;
                 if (password !== confirm) throw new Error('As senhas não coincidem!');
                 if (password.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres.');
@@ -208,12 +246,17 @@ async function validateAccess() {
                 isSignUpMode = false;
                 updateAuthUI();
             } else {
+                console.log('🔐 Fazendo login como pastor...');
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
+                console.log('✅ Login pastor bem-sucedido!');
                 handleLogin('pastor', 'Administração');
             }
         } else {
+            console.log('🎫 Login com token para role:', pendingRole);
             const tokenInput = document.getElementById('login-token').value || document.getElementById('treasurer-token').value;
+            console.log('🔍 Procurando token:', tokenInput);
+
             let query = supabaseClient.from('tokens').select('*').eq('code', tokenInput);
 
             if (pendingRole === 'leader') {
@@ -227,29 +270,43 @@ async function validateAccess() {
             const { data: tokens, error } = await query;
             if (error) throw error;
 
+            console.log('📊 Tokens encontrados:', tokens);
+
             if (tokens && tokens.length > 0) {
+                console.log('✅ Token válido encontrado:', tokens[0]);
                 handleLogin(pendingRole, tokens[0].cell_name || 'Tesoureiro');
             } else {
+                console.log('❌ Token inválido!');
                 errorEl.innerText = 'Token inválido!';
                 errorEl.style.display = 'block';
             }
         }
     } catch (err) {
+        console.error('❌ Erro na validação:', err);
         errorEl.innerText = 'Erro: ' + (err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos' : err.message);
         errorEl.style.display = 'block';
     }
 }
 
 async function handleLogin(role, cellName) {
+    console.log('🔐 Iniciando login para:', role, cellName);
     sessionStorage.setItem('cbna_user_role', role);
     sessionStorage.setItem('cbna_user_cell', cellName);
 
     document.body.className = `role-${role}`;
 
-    console.log('Sincronizando dados com o servidor...');
-    await loadData(); // AGUARDA os dados chegarem
+    try {
+        console.log('📡 Carregando dados...');
+        await loadData(); // AGUARDA os dados chegarem
+        console.log('✅ Dados carregados com sucesso');
+    } catch (error) {
+        console.error('⚠️ Erro ao carregar dados, mas continuando com login:', error);
+        // Mesmo se der erro nos dados, continua com o login
+    }
 
+    console.log('🔍 Verificando autenticação...');
     await checkAuth(); // Depois verifica a autorização e muda a tela
+    console.log('✅ Login concluído!');
 }
 
 async function handleLogout() {
@@ -260,15 +317,23 @@ async function handleLogout() {
 }
 
 async function checkAuth() {
+    console.log('🔐 Verificando autenticação...');
     const { data: { session } } = await supabaseClient.auth.getSession();
     const role = sessionStorage.getItem('cbna_user_role');
     const cellName = sessionStorage.getItem('cbna_user_cell');
+
+    console.log('📋 Estado de autenticação:', {
+        hasSession: !!session,
+        role: role,
+        cellName: cellName
+    });
 
     const loginOverlay = document.getElementById('login-overlay');
     const mainSidebar = document.getElementById('main-sidebar');
     const mainContent = document.getElementById('main-content');
 
     if (session || role) {
+        console.log('✅ Usuário autenticado, mostrando painel principal...');
         loginOverlay.style.display = 'none';
         mainSidebar.style.display = 'flex';
         mainContent.style.display = 'block';
