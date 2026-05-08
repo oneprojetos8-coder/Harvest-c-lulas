@@ -401,11 +401,13 @@
                     <button class="btn filter-btn" onclick="setFinancialFilter('year', this)">Ano</button>
                     <button class="btn filter-btn" onclick="setFinancialFilter('today', this)">Hoje</button>
                 </div>
-                <div class="financial-filter-group">
+                <div class="financial-filter-group period-group">
                     <span class="filter-label">Período</span>
-                    <input type="date" id="financial-start-date" class="compact-input">
-                    <span class="filter-separator">até</span>
-                    <input type="date" id="financial-end-date" class="compact-input">
+                    <div class="date-range-group">
+                        <input type="date" id="financial-start-date" class="compact-input">
+                        <span class="filter-separator">até</span>
+                        <input type="date" id="financial-end-date" class="compact-input">
+                    </div>
                     <button class="btn btn-primary compact-action" onclick="setFinancialFilter('custom', this)">Aplicar</button>
                 </div>
             </div>
