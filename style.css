@@ -484,15 +484,21 @@ td {
     transform: translateY(-2px);
 }
 
-.pastor-only, .leader-only {
+.pastor-only, .leader-only, .pastor-treasurer {
     display: block;
 }
 
-body.role-leader .pastor-only {
+body.role-leader .pastor-only,
+body.role-leader .pastor-treasurer {
     display: none !important;
 }
 
 body.role-pastor .leader-only {
+    display: none !important;
+}
+
+body.role-treasurer .pastor-only,
+body.role-treasurer .leader-only {
     display: none !important;
 }
 

@@ -17,9 +17,10 @@ INSERT INTO cells (name, leaders, location) VALUES
 ('Célula Oliveiras', 'Pedro Oliveira, Ana Costa', 'Av. das Oliveiras, 456');
 
 -- Inserir tokens
-INSERT INTO tokens (code, cell_name) VALUES
-('VIDEIRA2026', 'Célula Videira'),
-('OLIVEIRAS2026', 'Célula Oliveiras');
+INSERT INTO tokens (code, cell_name, role) VALUES
+('VIDEIRA2026', 'Célula Videira', 'leader'),
+('OLIVEIRAS2026', 'Célula Oliveiras', 'leader'),
+('TESOUREIRO2026', NULL, 'treasurer');
 
 -- Inserir relatórios de células
 INSERT INTO reports (date, cell_name, leaders, location, start_time, end_time, members, visitors, occurred, notes, timestamp) VALUES

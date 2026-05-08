@@ -39,6 +39,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const setupForm = document.getElementById('cell-setup-form');
     if (setupForm) setupForm.addEventListener('submit', handleSetupSubmit);
+    
+    // Add event listener for token role change
+    const tokenRoleSelect = document.getElementById('token-role');
+    if (tokenRoleSelect) {
+        tokenRoleSelect.addEventListener('change', function() {
+            const cellNameGroup = document.getElementById('cell-name-group');
+            const cellNameInput = document.getElementById('token-cell-name');
+            if (this.value === 'treasurer') {
+                cellNameGroup.querySelector('label').textContent = 'Nome do Tesoureiro';
+                cellNameInput.placeholder = 'Ex: João Silva';
+            } else {
+                cellNameGroup.querySelector('label').textContent = 'Nome da Célula/Líder';
+                cellNameInput.placeholder = 'Ex: Célula Videira';
+            }
+        });
+    }
 });
 
 // Authentication Logic
@@ -54,11 +70,18 @@ function showTokenInput(role) {
     if (role === 'pastor') {
         document.getElementById('pastor-login-fields').style.display = 'block';
         document.getElementById('leader-login-fields').style.display = 'none';
+        document.getElementById('treasurer-login-fields').style.display = 'none';
         document.getElementById('pastor-auth-toggle').style.display = 'block';
         updateAuthUI();
-    } else {
+    } else if (role === 'leader') {
         document.getElementById('pastor-login-fields').style.display = 'none';
         document.getElementById('leader-login-fields').style.display = 'block';
+        document.getElementById('treasurer-login-fields').style.display = 'none';
+        document.getElementById('pastor-auth-toggle').style.display = 'none';
+    } else if (role === 'treasurer') {
+        document.getElementById('pastor-login-fields').style.display = 'none';
+        document.getElementById('leader-login-fields').style.display = 'none';
+        document.getElementById('treasurer-login-fields').style.display = 'block';
         document.getElementById('pastor-auth-toggle').style.display = 'none';
     }
 }
@@ -162,12 +185,12 @@ async function validateAccess() {
                 handleLogin('pastor', 'Administração');
             }
         } else {
-            const tokenInput = document.getElementById('login-token').value;
-            const { data: tokens, error } = await supabaseClient.from('tokens').select('*').eq('code', tokenInput);
+            const tokenInput = document.getElementById('login-token').value || document.getElementById('treasurer-token').value;
+            const { data: tokens, error } = await supabaseClient.from('tokens').select('*').eq('code', tokenInput).eq('role', pendingRole);
             if (error) throw error;
 
             if (tokens && tokens.length > 0) {
-                handleLogin('leader', tokens[0].cell_name);
+                handleLogin(pendingRole, tokens[0].cell_name || 'Tesoureiro');
             } else {
                 errorEl.innerText = 'Token inválido!';
                 errorEl.style.display = 'block';
@@ -213,12 +236,14 @@ async function checkAuth() {
         mainContent.style.display = 'block';
 
         document.body.className = `role-${role}`;
-        document.getElementById('current-user-role').innerText = role === 'pastor' ? 'Pastor' : `Líder: ${cellName}`;
+        document.getElementById('current-user-role').innerText = role === 'pastor' ? 'Pastor' : role === 'treasurer' ? 'Tesoureiro' : `Líder: ${cellName}`;
 
         if (role === 'pastor') {
             switchView('pastor-view');
             renderAllCells();
             loadPastorNotes();
+        } else if (role === 'treasurer') {
+            switchView('pastor-financial');
         } else {
             // Busca a célula no estado carregado do Supabase
             const cellInfo = state.cells.find(c => c.name === cellName);
@@ -293,10 +318,12 @@ async function handleSetupSubmit(e) {
 }
 
 async function generateToken() {
+    const role = document.getElementById('token-role').value;
     const cellName = document.getElementById('token-cell-name').value;
     const customCode = document.getElementById('token-custom-code').value.trim().toUpperCase();
 
-    if (!cellName) return alert('Digite o nome da célula ou líder');
+    if (role === 'leader' && !cellName) return alert('Digite o nome da célula');
+    if (role === 'treasurer' && !cellName) return alert('Digite o nome do tesoureiro');
 
     // Se tiver código personalizado, usa ele. Se não, gera um aleatório.
     const tokenCode = customCode || Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -309,8 +336,8 @@ async function generateToken() {
 
     const newToken = {
         code: tokenCode,
-        cell_name: cellName,
-        role: 'leader'
+        cell_name: role === 'leader' ? cellName : null,
+        role: role
     };
 
     const { error } = await supabaseClient.from('tokens').insert([newToken]);
@@ -332,13 +359,23 @@ function renderAllCells() {
     tbody.innerHTML = '';
 
     state.tokens.forEach(t => {
-        const cellInfo = state.cells.find(c => c.name === t.cell_name) || { leaders: 'Aguardando Setup', status: 'Inativo' };
+        let displayName, leaders, status;
+        if (t.role === 'treasurer') {
+            displayName = `Tesoureiro: ${t.cell_name || 'Geral'}`;
+            leaders = 'Tesoureiro';
+            status = 'Ativo';
+        } else {
+            const cellInfo = state.cells.find(c => c.name === t.cell_name) || { leaders: 'Aguardando Setup', status: 'Inativo' };
+            displayName = t.cell_name;
+            leaders = cellInfo.leaders;
+            status = cellInfo.leaders !== 'Aguardando Setup' ? 'Ativa' : 'Pendente';
+        }
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${t.cell_name}</strong></td>
-            <td>${cellInfo.leaders}</td>
+            <td><strong>${displayName}</strong></td>
+            <td>${leaders}</td>
             <td><code style="background: #eee; padding: 2px 6px; border-radius: 4px;">${t.code}</code></td>
-            <td><span class="badge ${cellInfo.leaders !== 'Aguardando Setup' ? 'badge-success' : ''}" style="${cellInfo.leaders !== 'Aguardando Setup' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #f5f5f5; color: #999;'}">${cellInfo.leaders !== 'Aguardando Setup' ? 'Ativa' : 'Pendente'}</span></td>
+            <td><span class="badge ${status === 'Ativa' || status === 'Ativo' ? 'badge-success' : ''}" style="${status === 'Ativa' || status === 'Ativo' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #f5f5f5; color: #999;'}">${status}</span></td>
             <td>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn" style="padding: 4px 8px; font-size: 0.75rem; background: #e3f2fd; color: #1976d2;" onclick="openTokenEdit('${t.id}')">
