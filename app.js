@@ -14,10 +14,38 @@ let state = {
     financialTransactions: []
 };
 
-// Initialize App
-document.addEventListener('DOMContentLoaded', async () => {
-    // Check for existing session
-    const { data: { session } } = await supabaseClient.auth.getSession();
+// Teste de conexão com Supabase
+async function testSupabaseConnection() {
+    console.log('🔍 Testando conexão com Supabase...');
+    try {
+        // Teste básico de conectividade
+        const { data, error } = await supabaseClient.from('reports').select('count').limit(1);
+        if (error) {
+            console.error('❌ Erro de conexão:', error);
+            alert('Erro de conexão com Supabase: ' + error.message + '\n\nVerifique se as políticas RLS foram aplicadas!');
+            return false;
+        }
+        
+        console.log('✅ Conexão com Supabase OK');
+        
+        // Teste se há dados
+        const tables = ['reports', 'cells', 'tokens', 'tithes', 'offerings', 'special_offerings', 'campaigns', 'financial_transactions'];
+        for (const table of tables) {
+            const { data: tableData, error: tableError } = await supabaseClient.from(table).select('*').limit(1);
+            if (tableError) {
+                console.error(`❌ Erro na tabela ${table}:`, tableError);
+            } else {
+                console.log(`📊 ${table}: ${tableData?.length || 0} registros`);
+            }
+        }
+        
+        return true;
+    } catch (err) {
+        console.error('❌ Erro geral no teste:', err);
+        alert('Erro geral: ' + err.message);
+        return false;
+    }
+}
 
     // Independentemente de estar logado ou não, vamos carregar os dados públicos
     // Mas para os privados, precisamos do login.
@@ -668,7 +696,7 @@ function preFillReportForm() {
 
 // Data Handling
 async function loadData() {
-    console.log('Buscando dados atualizados...');
+    console.log('🔄 Buscando dados atualizados...');
     try {
         const [rRes, cRes, tRes, tithesRes, offeringsRes, specialRes, campaignsRes, transRes] = await Promise.all([
             supabaseClient.from('reports').select('*').order('date', { ascending: false }),
@@ -681,14 +709,49 @@ async function loadData() {
             supabaseClient.from('financial_transactions').select('*').order('date', { ascending: false })
         ]);
 
-        if (rRes.error) throw rRes.error;
-        if (cRes.error) throw cRes.error;
-        if (tRes.error) throw tRes.error;
-        if (tithesRes.error) throw tithesRes.error;
-        if (offeringsRes.error) throw offeringsRes.error;
-        if (specialRes.error) throw specialRes.error;
-        if (campaignsRes.error) throw campaignsRes.error;
-        if (transRes.error) throw transRes.error;
+        console.log('📊 Respostas recebidas:', {
+            reports: rRes.data?.length || 0,
+            cells: cRes.data?.length || 0,
+            tokens: tRes.data?.length || 0,
+            tithes: tithesRes.data?.length || 0,
+            offerings: offeringsRes.data?.length || 0,
+            specialOfferings: specialRes.data?.length || 0,
+            campaigns: campaignsRes.data?.length || 0,
+            transactions: transRes.data?.length || 0
+        });
+
+        if (rRes.error) {
+            console.error('❌ Erro em reports:', rRes.error);
+            throw rRes.error;
+        }
+        if (cRes.error) {
+            console.error('❌ Erro em cells:', cRes.error);
+            throw cRes.error;
+        }
+        if (tRes.error) {
+            console.error('❌ Erro em tokens:', tRes.error);
+            throw tRes.error;
+        }
+        if (tithesRes.error) {
+            console.error('❌ Erro em tithes:', tithesRes.error);
+            throw tithesRes.error;
+        }
+        if (offeringsRes.error) {
+            console.error('❌ Erro em offerings:', offeringsRes.error);
+            throw offeringsRes.error;
+        }
+        if (specialRes.error) {
+            console.error('❌ Erro em special_offerings:', specialRes.error);
+            throw specialRes.error;
+        }
+        if (campaignsRes.error) {
+            console.error('❌ Erro em campaigns:', campaignsRes.error);
+            throw campaignsRes.error;
+        }
+        if (transRes.error) {
+            console.error('❌ Erro em financial_transactions:', transRes.error);
+            throw transRes.error;
+        }
 
         state.reports = rRes.data || [];
         state.cells = cRes.data || [];
@@ -699,7 +762,17 @@ async function loadData() {
         state.campaigns = campaignsRes.data || [];
         state.financialTransactions = transRes.data || [];
 
-        console.log('Sincronização concluída! Atualizando interface...');
+        console.log('✅ Sincronização concluída! Atualizando interface...');
+        console.log('📈 Estado atual:', {
+            reports: state.reports.length,
+            cells: state.cells.length,
+            tokens: state.tokens.length,
+            tithes: state.tithes.length,
+            offerings: state.offerings.length,
+            specialOfferings: state.specialOfferings.length,
+            campaigns: state.campaigns.length,
+            transactions: state.financialTransactions.length
+        });
         
         // Inicializa e atualiza tudo agora que temos os dados reais
         initCharts(); 
@@ -708,7 +781,8 @@ async function loadData() {
         renderAllCells();
         updateFinancialDashboard();
     } catch (error) {
-        console.error('Erro de sincronização:', error);
+        console.error('❌ Erro de sincronização:', error);
+        alert('Erro ao carregar dados: ' + error.message + '\n\nVerifique se o SQL foi executado no Supabase!');
     }
 }
 
