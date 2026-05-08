@@ -1112,13 +1112,29 @@ function contactLeader(cellName) {
 
 // FINANCIAL DASHBOARD FUNCTIONS
 let currentFinancialFilter = 'month';
+let currentFinancialTab = 'summary';
 let financialChart = null;
 
-function setFinancialFilter(filter) {
+function setFinancialFilter(filter, button) {
     currentFinancialFilter = filter;
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (button) button.classList.add('active');
     updateFinancialDashboard();
+}
+
+function switchFinancialTab(tab) {
+    currentFinancialTab = tab;
+    document.getElementById('finance-tab-summary').classList.toggle('active', tab === 'summary');
+    document.getElementById('finance-tab-manual').classList.toggle('active', tab === 'manual');
+    document.getElementById('financial-summary-section').classList.toggle('hidden', tab !== 'summary');
+    document.getElementById('financial-manual-section').classList.toggle('hidden', tab !== 'manual');
+    if (tab === 'manual') {
+        updateManualTransactionsTable();
+    }
+}
+
+function canEditFinances() {
+    return sessionStorage.getItem('cbna_user_role') === 'financeiro';
 }
 
 function getFinancialDateRange() {
@@ -1151,7 +1167,6 @@ function getFinancialDateRange() {
                 startDate = new Date(startInput);
                 endDate = new Date(endInput + 'T23:59:59');
             } else {
-                // Default to month if custom dates not set
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
             }
@@ -1171,63 +1186,81 @@ function filterFinancialData(data, startDate, endDate) {
     });
 }
 
+function parseManualDescription(description) {
+    if (!description) return { category: '', notes: '' };
+    const [category, notes] = description.split('||');
+    return { category: category || '', notes: notes || '' };
+}
+
+function formatBRL(value) {
+    return `R$ ${parseFloat(value || 0).toFixed(2)}`;
+}
+
 function updateFinancialDashboard() {
     const { startDate, endDate } = getFinancialDateRange();
 
-    // Filter data by date range
     const filteredTithes = filterFinancialData(state.tithes, startDate, endDate);
     const filteredOfferings = filterFinancialData(state.offerings, startDate, endDate);
     const filteredSpecialOfferings = filterFinancialData(state.specialOfferings, startDate, endDate);
+    const filteredTransactions = filterFinancialData(state.financialTransactions, startDate, endDate);
 
-    // Calculate totals
     const totalTithes = filteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const totalOfferings = filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
     const totalSpecialOfferings = filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-    const totalAmount = totalTithes + totalOfferings + totalSpecialOfferings;
 
-    const totalContributions = filteredTithes.length + filteredOfferings.length + filteredSpecialOfferings.length;
+    const positiveTransactions = filteredTransactions.filter(t => t.type !== 'manual_expense');
+    const negativeTransactions = filteredTransactions.filter(t => t.type === 'manual_expense');
+    const totalIncomes = positiveTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalExpenses = negativeTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-    // Update metrics
-    document.getElementById('financial-total-month').innerText = `R$ ${totalAmount.toFixed(2)}`;
-    document.getElementById('financial-tithes').innerText = `R$ ${totalTithes.toFixed(2)}`;
-    document.getElementById('financial-offerings').innerText = `R$ ${totalOfferings.toFixed(2)}`;
+    const totalAmount = totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes - totalExpenses;
+    const totalContributions = filteredTithes.length + filteredOfferings.length + filteredSpecialOfferings.length + positiveTransactions.length;
+
+    document.getElementById('financial-total-month').innerText = formatBRL(totalAmount);
+    document.getElementById('financial-inflows').innerText = formatBRL(totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes);
+    document.getElementById('financial-outflows').innerText = formatBRL(totalExpenses);
+    document.getElementById('financial-tithes').innerText = formatBRL(totalTithes);
+    document.getElementById('financial-offerings').innerText = formatBRL(totalOfferings);
     document.getElementById('financial-contributions').innerText = totalContributions;
 
-    // Calculate growth compared to previous period
     const previousPeriod = getPreviousPeriod(startDate, endDate);
     const prevFilteredTithes = filterFinancialData(state.tithes, previousPeriod.startDate, previousPeriod.endDate);
     const prevFilteredOfferings = filterFinancialData(state.offerings, previousPeriod.startDate, previousPeriod.endDate);
     const prevFilteredSpecialOfferings = filterFinancialData(state.specialOfferings, previousPeriod.startDate, previousPeriod.endDate);
+    const prevFilteredTransactions = filterFinancialData(state.financialTransactions, previousPeriod.startDate, previousPeriod.endDate);
+    const prevPositiveTransactions = prevFilteredTransactions.filter(t => t.type !== 'manual_expense');
+    const prevNegativeTransactions = prevFilteredTransactions.filter(t => t.type === 'manual_expense');
     const prevTotal = prevFilteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) +
-                     prevFilteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) +
-                     prevFilteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        prevFilteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) +
+        prevFilteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) +
+        prevPositiveTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) -
+        prevNegativeTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const growth = prevTotal > 0 ? ((totalAmount - prevTotal) / prevTotal * 100) : 0;
     const growthElement = document.getElementById('financial-growth-trend');
-    growthElement.innerHTML = `<i data-lucide="${growth >= 0 ? 'trending-up' : 'trending-down'}"></i> ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs período anterior`;
-    growthElement.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
-
-    // Last contribution
-    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings]
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (allContributions.length > 0) {
-        const last = allContributions[0];
-        const dateStr = new Date(last.date).toLocaleDateString('pt-BR');
-        document.getElementById('financial-last-contribution').innerText = `R$ ${parseFloat(last.amount).toFixed(2)} (${dateStr})`;
-    } else {
-        document.getElementById('financial-last-contribution').innerText = 'Nenhuma';
+    if (growthElement) {
+        growthElement.innerHTML = `<i data-lucide="${growth >= 0 ? 'trending-up' : 'trending-down'}"></i> ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs período anterior`;
+        growthElement.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
     }
 
-    // Update summary table
-    updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings);
+    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings, ...positiveTransactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Update chart
+    const lastContribElement = document.getElementById('financial-last-contribution');
+    if (lastContribElement) {
+        if (allContributions.length > 0) {
+            const last = allContributions[0];
+            const dateStr = new Date(last.date).toLocaleDateString('pt-BR');
+            lastContribElement.innerText = `${formatBRL(last.amount)} (${dateStr})`;
+        } else {
+            lastContribElement.innerText = 'Nenhuma';
+        }
+    }
+
+    updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings, positiveTransactions, negativeTransactions);
     updateFinancialChart(startDate, endDate);
-
-    // Update main dashboard financial card
     updateMainFinancialCard(totalAmount, growth);
-
+    updateManualTransactionsTable();
     lucide.createIcons();
 }
 
@@ -1239,7 +1272,7 @@ function getPreviousPeriod(startDate, endDate) {
     return { startDate: prevStartDate, endDate: prevEndDate };
 }
 
-function updateFinancialSummaryTable(tithes, offerings, specialOfferings) {
+function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manualIncomes = [], manualExpenses = []) {
     const tbody = document.getElementById('financial-summary-body');
     if (!tbody) return;
 
@@ -1255,42 +1288,127 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings) {
     const specialTotal = specialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
     const specialAvg = specialCount > 0 ? specialTotal / specialCount : 0;
 
+    const manualIncomesCount = manualIncomes.length;
+    const manualIncomesTotal = manualIncomes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualIncomesAvg = manualIncomesCount > 0 ? manualIncomesTotal / manualIncomesCount : 0;
+
+    const manualExpensesCount = manualExpenses.length;
+    const manualExpensesTotal = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualExpensesAvg = manualExpensesCount > 0 ? manualExpensesTotal / manualExpensesCount : 0;
+
     tbody.innerHTML = `
         <tr>
             <td>Dízimos</td>
             <td>${tithesCount}</td>
-            <td>R$ ${tithesTotal.toFixed(2)}</td>
-            <td>R$ ${tithesAvg.toFixed(2)}</td>
+            <td>${formatBRL(tithesTotal)}</td>
+            <td>${formatBRL(tithesAvg)}</td>
         </tr>
         <tr>
             <td>Ofertas</td>
             <td>${offeringsCount}</td>
-            <td>R$ ${offeringsTotal.toFixed(2)}</td>
-            <td>R$ ${offeringsAvg.toFixed(2)}</td>
+            <td>${formatBRL(offeringsTotal)}</td>
+            <td>${formatBRL(offeringsAvg)}</td>
         </tr>
         <tr>
             <td>Ofertas Especiais</td>
             <td>${specialCount}</td>
-            <td>R$ ${specialTotal.toFixed(2)}</td>
-            <td>R$ ${specialAvg.toFixed(2)}</td>
+            <td>${formatBRL(specialTotal)}</td>
+            <td>${formatBRL(specialAvg)}</td>
+        </tr>
+        <tr>
+            <td>Lançamentos Manuais</td>
+            <td>${manualIncomesCount + manualExpensesCount}</td>
+            <td>${formatBRL(manualIncomesTotal - manualExpensesTotal)}</td>
+            <td>${formatBRL((manualIncomesCount + manualExpensesCount) > 0 ? (manualIncomesTotal - manualExpensesTotal) / (manualIncomesCount + manualExpensesCount) : 0)}</td>
         </tr>
     `;
+}
+
+async function createManualTransaction() {
+    if (!canEditFinances()) {
+        alert('Apenas a equipe financeira pode registrar lançamentos manuais.');
+        return;
+    }
+
+    const type = document.getElementById('manual-transaction-type').value;
+    const category = document.getElementById('manual-transaction-category').value || 'Manual';
+    const amount = parseFloat(document.getElementById('manual-transaction-amount').value || '0');
+    const date = document.getElementById('manual-transaction-date').value;
+    const notes = document.getElementById('manual-transaction-description').value || '';
+
+    if (!amount || !date) {
+        alert('Preencha a data e o valor.');
+        return;
+    }
+
+    const description = `${category}||${notes}`;
+
+    const { error } = await supabaseClient.from('financial_transactions').insert([{
+        type,
+        reference_id: 0,
+        amount,
+        date,
+        description
+    }]);
+
+    if (error) {
+        alert('Erro ao salvar lançamento: ' + error.message);
+        return;
+    }
+
+    alert('Lançamento manual registrado com sucesso!');
+    document.getElementById('manual-transaction-category').value = '';
+    document.getElementById('manual-transaction-amount').value = '';
+    document.getElementById('manual-transaction-date').value = '';
+    document.getElementById('manual-transaction-description').value = '';
+
+    await loadData();
+    switchFinancialTab('manual');
+}
+
+function updateManualTransactionsTable() {
+    const tbody = document.getElementById('financial-manual-body');
+    if (!tbody) return;
+
+    const transactions = state.financialTransactions
+        .filter(t => ['manual_income', 'manual_expense'].includes(t.type))
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 10);
+
+    tbody.innerHTML = transactions.map(tx => {
+        const dateStr = new Date(tx.date).toLocaleDateString('pt-BR');
+        const { category, notes } = parseManualDescription(tx.description);
+        const direction = tx.type === 'manual_expense' ? 'Saída' : 'Entrada';
+        return `
+            <tr>
+                <td>${dateStr}</td>
+                <td>${direction}</td>
+                <td>${category}</td>
+                <td>${formatBRL(tx.amount)}</td>
+                <td>${notes}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function updateFinancialChart(startDate, endDate) {
     const ctx = document.getElementById('financialChart');
     if (!ctx) return;
 
-    // Group data by week for the chart
     const weeks = {};
-    const allData = [...state.tithes, ...state.offerings, ...state.specialOfferings];
+    const allData = [
+        ...state.tithes.map(item => ({ ...item, sign: 1, category: 'Dízimo' })),
+        ...state.offerings.map(item => ({ ...item, sign: 1, category: 'Oferta' })),
+        ...state.specialOfferings.map(item => ({ ...item, sign: 1, category: 'Oferta Especial' })),
+        ...state.financialTransactions.map(item => ({ ...item, sign: item.type === 'manual_expense' ? -1 : 1, category: item.type }))
+    ];
 
     allData.forEach(item => {
         const date = new Date(item.date);
         if (date >= startDate && date <= endDate) {
             const weekKey = getWeekKey(date);
             if (!weeks[weekKey]) weeks[weekKey] = 0;
-            weeks[weekKey] += parseFloat(item.amount || 0);
+            weeks[weekKey] += parseFloat(item.amount || 0) * item.sign;
         }
     });
 
@@ -1302,14 +1420,14 @@ function updateFinancialChart(startDate, endDate) {
     financialChart = new Chart(ctx.getContext('2d'), {
         type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
-                label: 'Arrecadação Semanal',
-                data: data,
+                label: 'Fluxo Líquido',
+                data,
                 borderColor: '#001f3f',
-                tension: 0.4,
+                tension: 0.3,
                 fill: true,
-                backgroundColor: 'rgba(0, 31, 63, 0.05)',
+                backgroundColor: 'rgba(0, 31, 63, 0.08)',
                 pointBackgroundColor: '#3a86ff'
             }]
         },
@@ -1319,9 +1437,7 @@ function updateFinancialChart(startDate, endDate) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toFixed(0);
-                        }
+                        callback: value => 'R$ ' + value.toFixed(0)
                     }
                 }
             }
@@ -1339,9 +1455,10 @@ function updateMainFinancialCard(totalAmount, growth) {
     const card = document.getElementById('metric-financial-total');
     const trend = document.getElementById('metric-financial-trend');
 
-    if (card) card.innerText = `R$ ${totalAmount.toFixed(2)}`;
+    if (card) card.innerText = formatBRL(totalAmount);
     if (trend) {
         trend.innerHTML = `<i data-lucide="${growth >= 0 ? 'trending-up' : 'trending-down'}"></i> ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
         trend.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
     }
 }
+

@@ -364,60 +364,149 @@
             </div>
 
             <!-- Financial Filters -->
-            <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card" style="margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn filter-btn active" onclick="setFinancialFilter('month')">Mês</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('week')">Semana</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('year')">Ano</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('today')">Hoje</button>
+                        <button class="btn filter-btn active" onclick="setFinancialFilter('month', this)">Mês</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('week', this)">Semana</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('year', this)">Ano</button>
+                        <button class="btn filter-btn" onclick="setFinancialFilter('today', this)">Hoje</button>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <label style="font-size: 0.9rem;">Período personalizado:</label>
                         <input type="date" id="financial-start-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
                         <span>até</span>
                         <input type="date" id="financial-end-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <button class="btn btn-primary" style="padding: 4px 12px;" onclick="setFinancialFilter('custom')">Aplicar</button>
+                        <button class="btn btn-primary" style="padding: 4px 12px;" onclick="setFinancialFilter('custom', this)">Aplicar</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Financial Metrics Grid -->
-            <div class="metrics-grid">
-                <div class="card">
-                    <div class="card-title">Total Arrecadado</div>
-                    <div class="card-value" id="financial-total-month">R$ 0</div>
-                    <div class="card-trend" id="financial-growth-trend"><i data-lucide="trending-up"></i> vs mês anterior</div>
+            <div class="financial-tabs">
+                <button class="financial-tab active" id="finance-tab-summary" onclick="switchFinancialTab('summary')">Resumo</button>
+                <button class="financial-tab" id="finance-tab-manual" onclick="switchFinancialTab('manual')">Lançamentos</button>
+            </div>
+
+            <div id="financial-summary-section">
+                <div class="metrics-grid">
+                    <div class="card">
+                        <div class="card-title">Total Arrecadado</div>
+                        <div class="card-value" id="financial-total-month">R$ 0</div>
+                        <div class="card-trend" id="financial-growth-trend"><i data-lucide="trending-up"></i> vs período anterior</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Entradas</div>
+                        <div class="card-value" id="financial-inflows">R$ 0</div>
+                        <div class="card-trend"><i data-lucide="arrow-up-right"></i> Receitas totais</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Saídas</div>
+                        <div class="card-value" id="financial-outflows">R$ 0</div>
+                        <div class="card-trend trend-down"><i data-lucide="arrow-down-right"></i> Despesas manuais</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Total de Dízimos</div>
+                        <div class="card-value" id="financial-tithes">R$ 0</div>
+                        <div class="card-trend"><i data-lucide="dollar-sign"></i> Contribuições regulares</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Total de Ofertas</div>
+                        <div class="card-value" id="financial-offerings">R$ 0</div>
+                        <div class="card-trend"><i data-lucide="heart"></i> Ofertas voluntárias</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Contribuições</div>
+                        <div class="card-value" id="financial-contributions">0</div>
+                        <div class="card-trend"><i data-lucide="users"></i> Número de doações</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Última Contribuição</div>
+                        <div class="card-value" id="financial-last-contribution">Nenhuma</div>
+                        <div class="card-trend"><i data-lucide="clock"></i> Data e valor</div>
+                    </div>
                 </div>
-                <div class="card">
-                    <div class="card-title">Total de Dízimos</div>
-                    <div class="card-value" id="financial-tithes">R$ 0</div>
-                    <div class="card-trend"><i data-lucide="dollar-sign"></i> Contribuições regulares</div>
+
+                <div class="chart-container" style="margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem;"><i data-lucide="line-chart" style="width: 18px; vertical-align: middle;"></i> Evolução Financeira</h3>
+                    <canvas id="financialChart"></canvas>
                 </div>
-                <div class="card">
-                    <div class="card-title">Total de Ofertas</div>
-                    <div class="card-value" id="financial-offerings">R$ 0</div>
-                    <div class="card-trend"><i data-lucide="heart"></i> Ofertas voluntárias</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Contribuições</div>
-                    <div class="card-value" id="financial-contributions">0</div>
-                    <div class="card-trend"><i data-lucide="users"></i> Número de doações</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Última Contribuição</div>
-                    <div class="card-value" id="financial-last-contribution">Nenhuma</div>
-                    <div class="card-trend"><i data-lucide="clock"></i> Data e valor</div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3>Resumo por Tipo</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Quantidade</th>
+                                    <th>Total</th>
+                                    <th>Média</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-summary-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Financial Chart -->
-            <div class="chart-container" style="margin-top: 1.5rem;">
-                <h3 style="margin-bottom: 1rem;"><i data-lucide="line-chart" style="width: 18px; vertical-align: middle;"></i> Evolução Financeira</h3>
-                <canvas id="financialChart"></canvas>
+            <div id="financial-manual-section" class="hidden" style="margin-top: 1.5rem;">
+                <div class="card">
+                    <h3>Lançamento Manual</h3>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="manual-transaction-type">
+                            <option value="manual_income">Entrada</option>
+                            <option value="manual_expense">Saída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <input type="text" id="manual-transaction-category" placeholder="Ex: Caixa, Despesa, Campanha" list="manual-category-options">
+                        <datalist id="manual-category-options">
+                            <option value="Caixa"></option>
+                            <option value="Despesa Operacional"></option>
+                            <option value="Campanha"></option>
+                            <option value="Dízimo Extra"></option>
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor</label>
+                        <input type="number" id="manual-transaction-amount" placeholder="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="manual-transaction-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <textarea id="manual-transaction-description" rows="3" placeholder="Observações adicionais"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="createManualTransaction()">Salvar lançamento</button>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3>Últimos Lançamentos</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-manual-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <!-- Financial Summary Table -->
             <div class="card" style="margin-top: 1.5rem;">
                 <h3>Resumo por Tipo</h3>
                 <div class="table-container">
