@@ -394,31 +394,30 @@
             </div>
 
             <!-- Financial Filters -->
-            <div class="card" style="margin-bottom: 1rem;">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn filter-btn active" onclick="setFinancialFilter('month', this)">Mês</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('week', this)">Semana</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('year', this)">Ano</button>
-                        <button class="btn filter-btn" onclick="setFinancialFilter('today', this)">Hoje</button>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                        <label style="font-size: 0.9rem;">Período personalizado:</label>
-                        <input type="date" id="financial-start-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <span>até</span>
-                        <input type="date" id="financial-end-date" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <button class="btn btn-primary" style="padding: 4px 12px;" onclick="setFinancialFilter('custom', this)">Aplicar</button>
-                    </div>
+            <div class="card financial-filter-card">
+                <div class="financial-filter-group">
+                    <button class="btn filter-btn active" onclick="setFinancialFilter('month', this)">Mês</button>
+                    <button class="btn filter-btn" onclick="setFinancialFilter('week', this)">Semana</button>
+                    <button class="btn filter-btn" onclick="setFinancialFilter('year', this)">Ano</button>
+                    <button class="btn filter-btn" onclick="setFinancialFilter('today', this)">Hoje</button>
+                </div>
+                <div class="financial-filter-group">
+                    <span class="filter-label">Período</span>
+                    <input type="date" id="financial-start-date" class="compact-input">
+                    <span class="filter-separator">até</span>
+                    <input type="date" id="financial-end-date" class="compact-input">
+                    <button class="btn btn-primary compact-action" onclick="setFinancialFilter('custom', this)">Aplicar</button>
                 </div>
             </div>
 
             <div class="financial-tabs">
                 <button class="financial-tab active" id="finance-tab-summary" onclick="switchFinancialTab('summary')">Resumo</button>
                 <button class="financial-tab" id="finance-tab-manual" onclick="switchFinancialTab('manual')">Lançamentos</button>
+                <button class="financial-tab" id="finance-tab-reports" onclick="switchFinancialTab('reports')">Relatórios</button>
             </div>
 
             <div id="financial-summary-section">
-                <div class="metrics-grid">
+                <div class="financial-summary-grid">
                     <div class="card">
                         <div class="card-title">Total Arrecadado</div>
                         <div class="card-value" id="financial-total-month">R$ 0</div>
@@ -542,6 +541,65 @@
                                 <!-- Populated by JS -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTS SECTION -->
+            <div id="financial-reports-section" class="hidden" style="margin-top: 1.5rem;">
+                <div class="reports-grid">
+                    <div class="card report-generator">
+                        <h3><i data-lucide="file-text" style="width: 18px; vertical-align: middle;"></i> Gerar Relatório</h3>
+                        <div class="form-group">
+                            <label>Tipo de Relatório</label>
+                            <select id="report-type">
+                                <option value="financial-summary">Resumo Financeiro</option>
+                                <option value="tithes-report">Relatório de Dízimos</option>
+                                <option value="offerings-report">Relatório de Ofertas</option>
+                                <option value="special-offerings-report">Relatório de Ofertas Especiais</option>
+                                <option value="complete-financial">Relatório Financeiro Completo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Período</label>
+                            <div class="date-range-group">
+                                <input type="date" id="report-start-date" class="compact-input">
+                                <span class="filter-separator">até</span>
+                                <input type="date" id="report-end-date" class="compact-input">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Formato</label>
+                            <select id="report-format">
+                                <option value="pdf">PDF</option>
+                                <option value="excel">Excel (CSV)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Incluir Gráficos</label>
+                            <input type="checkbox" id="include-charts" checked>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateReport()" style="width: 100%;">
+                            <i data-lucide="download" style="width: 16px; vertical-align: middle;"></i>
+                            Gerar e Baixar Relatório
+                        </button>
+                    </div>
+
+                    <div class="card recent-reports">
+                        <h3><i data-lucide="clock" style="width: 18px; vertical-align: middle;"></i> Relatórios Recentes</h3>
+                        <div id="recent-reports-list">
+                            <p style="color: var(--text-muted); font-style: italic;">Nenhum relatório gerado ainda</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card report-preview" id="report-preview" style="display: none; margin-top: 1.5rem;">
+                    <div class="report-header">
+                        <h3>Prévia do Relatório</h3>
+                        <button class="btn btn-secondary" onclick="closeReportPreview()">Fechar</button>
+                    </div>
+                    <div id="report-content" class="report-content">
+                        <!-- Report content will be populated here -->
                     </div>
                 </div>
             </div>

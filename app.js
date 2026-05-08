@@ -61,6 +61,348 @@ async function forceLogin() {
     }
 }
 
+// Função para alternar entre as abas do painel financeiro
+function switchFinancialTab(tabName) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.financial-tab').forEach(tab => tab.classList.remove('active'));
+    
+    // Hide all sections
+    document.getElementById('financial-summary-section').classList.add('hidden');
+    document.getElementById('financial-manual-section').classList.add('hidden');
+    document.getElementById('financial-reports-section').classList.add('hidden');
+    
+    // Show selected tab and section
+    document.getElementById(`finance-tab-${tabName}`).classList.add('active');
+    document.getElementById(`financial-${tabName}-section`).classList.remove('hidden');
+    
+    currentFinancialTab = tabName;
+}
+
+// Função para gerar relatórios
+async function generateReport() {
+    const reportType = document.getElementById('report-type').value;
+    const startDate = document.getElementById('report-start-date').value;
+    const endDate = document.getElementById('report-end-date').value;
+    const format = document.getElementById('report-format').value;
+    const includeCharts = document.getElementById('include-charts').checked;
+
+    if (!startDate || !endDate) {
+        alert('Por favor, selecione o período do relatório.');
+        return;
+    }
+
+    console.log('Gerando relatório:', { reportType, startDate, endDate, format, includeCharts });
+
+    try {
+        let reportData = {};
+        let reportTitle = '';
+
+        // Filtrar dados pelo período
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Incluir o dia todo
+
+        switch (reportType) {
+            case 'financial-summary':
+                reportTitle = 'Resumo Financeiro';
+                reportData = await generateFinancialSummaryReport(start, end);
+                break;
+            case 'tithes-report':
+                reportTitle = 'Relatório de Dízimos';
+                reportData = await generateTithesReport(start, end);
+                break;
+            case 'offerings-report':
+                reportTitle = 'Relatório de Ofertas';
+                reportData = await generateOfferingsReport(start, end);
+                break;
+            case 'special-offerings-report':
+                reportTitle = 'Relatório de Ofertas Especiais';
+                reportData = await generateSpecialOfferingsReport(start, end);
+                break;
+            case 'complete-financial':
+                reportTitle = 'Relatório Financeiro Completo';
+                reportData = await generateCompleteFinancialReport(start, end);
+                break;
+        }
+
+        if (format === 'pdf') {
+            await generatePDFReport(reportTitle, reportData, start, end, includeCharts);
+        } else {
+            generateCSVReport(reportTitle, reportData, start, end);
+        }
+
+        // Adicionar aos relatórios recentes
+        addToRecentReports(reportTitle, start, end, format);
+
+    } catch (error) {
+        console.error('Erro ao gerar relatório:', error);
+        alert('Erro ao gerar relatório: ' + error.message);
+    }
+}
+
+// Funções auxiliares para gerar diferentes tipos de relatório
+async function generateFinancialSummaryReport(startDate, endDate) {
+    const filteredTithes = state.tithes.filter(t => {
+        const date = new Date(t.date);
+        return date >= startDate && date <= endDate;
+    });
+    const filteredOfferings = state.offerings.filter(o => {
+        const date = new Date(o.date);
+        return date >= startDate && date <= endDate;
+    });
+    const filteredSpecialOfferings = state.specialOfferings.filter(s => {
+        const date = new Date(s.date);
+        return date >= startDate && date <= endDate;
+    });
+    const filteredTransactions = state.financialTransactions.filter(t => {
+        const date = new Date(t.date);
+        return date >= startDate && date <= endDate;
+    });
+
+    const totalTithes = filteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalOfferings = filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
+    const totalSpecialOfferings = filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+    const totalIncomes = filteredTransactions.filter(t => t.type === 'manual_income').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalExpenses = filteredTransactions.filter(t => t.type === 'manual_expense').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+    return {
+        summary: {
+            totalTithes,
+            totalOfferings,
+            totalSpecialOfferings,
+            totalIncomes,
+            totalExpenses,
+            totalRevenue: totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes,
+            netBalance: totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes - totalExpenses,
+            tithesCount: filteredTithes.length,
+            offeringsCount: filteredOfferings.length,
+            specialOfferingsCount: filteredSpecialOfferings.length,
+            transactionsCount: filteredTransactions.length
+        }
+    };
+}
+
+async function generateTithesReport(startDate, endDate) {
+    const filteredTithes = state.tithes.filter(t => {
+        const date = new Date(t.date);
+        return date >= startDate && date <= endDate;
+    });
+
+    return {
+        tithes: filteredTithes,
+        summary: {
+            total: filteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0),
+            count: filteredTithes.length,
+            average: filteredTithes.length > 0 ? filteredTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) / filteredTithes.length : 0
+        }
+    };
+}
+
+async function generateOfferingsReport(startDate, endDate) {
+    const filteredOfferings = state.offerings.filter(o => {
+        const date = new Date(o.date);
+        return date >= startDate && date <= endDate;
+    });
+
+    return {
+        offerings: filteredOfferings,
+        summary: {
+            total: filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0),
+            count: filteredOfferings.length,
+            average: filteredOfferings.length > 0 ? filteredOfferings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) / filteredOfferings.length : 0
+        }
+    };
+}
+
+async function generateSpecialOfferingsReport(startDate, endDate) {
+    const filteredSpecialOfferings = state.specialOfferings.filter(s => {
+        const date = new Date(s.date);
+        return date >= startDate && date <= endDate;
+    });
+
+    return {
+        specialOfferings: filteredSpecialOfferings,
+        summary: {
+            total: filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+            count: filteredSpecialOfferings.length,
+            average: filteredSpecialOfferings.length > 0 ? filteredSpecialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) / filteredSpecialOfferings.length : 0
+        }
+    };
+}
+
+async function generateCompleteFinancialReport(startDate, endDate) {
+    const [summary, tithes, offerings, specialOfferings] = await Promise.all([
+        generateFinancialSummaryReport(startDate, endDate),
+        generateTithesReport(startDate, endDate),
+        generateOfferingsReport(startDate, endDate),
+        generateSpecialOfferingsReport(startDate, endDate)
+    ]);
+
+    return {
+        summary: summary.summary,
+        tithes: tithes,
+        offerings: offerings,
+        specialOfferings: specialOfferings
+    };
+}
+
+// Função para gerar PDF
+async function generatePDFReport(title, data, startDate, endDate, includeCharts) {
+    // Para simplificar, vamos criar um PDF básico usando uma biblioteca externa
+    // Em um ambiente real, você usaria jsPDF ou similar
+    console.log('Gerando PDF:', { title, data, startDate, endDate });
+
+    // Criar conteúdo HTML para o relatório
+    let htmlContent = `
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; border-bottom: 2px solid #3a86ff; padding-bottom: 10px; }
+                h2 { color: #666; margin-top: 30px; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .summary { background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                .total { font-weight: bold; font-size: 1.2em; }
+            </style>
+        </head>
+        <body>
+            <h1>${title}</h1>
+            <p><strong>Período:</strong> ${startDate.toLocaleDateString('pt-BR')} até ${endDate.toLocaleDateString('pt-BR')}</p>
+            <p><strong>Data de geração:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+    `;
+
+    if (data.summary) {
+        htmlContent += `
+            <div class="summary">
+                <h2>Resumo Financeiro</h2>
+                <p><strong>Total de Dízimos:</strong> R$ ${data.summary.totalTithes?.toFixed(2) || '0.00'}</p>
+                <p><strong>Total de Ofertas:</strong> R$ ${data.summary.totalOfferings?.toFixed(2) || '0.00'}</p>
+                <p><strong>Total de Ofertas Especiais:</strong> R$ ${data.summary.totalSpecialOfferings?.toFixed(2) || '0.00'}</p>
+                <p><strong>Entradas Manuais:</strong> R$ ${data.summary.totalIncomes?.toFixed(2) || '0.00'}</p>
+                <p><strong>Saídas Manuais:</strong> R$ ${data.summary.totalExpenses?.toFixed(2) || '0.00'}</p>
+                <p class="total"><strong>Saldo Líquido:</strong> R$ ${data.summary.netBalance?.toFixed(2) || '0.00'}</p>
+            </div>
+        `;
+    }
+
+    // Adicionar tabelas de dados detalhados
+    if (data.tithes?.tithes) {
+        htmlContent += `
+            <h2>Dízimos Detalhados</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th>Célula</th>
+                        <th>Membro</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        data.tithes.tithes.forEach(tithe => {
+            htmlContent += `
+                <tr>
+                    <td>${new Date(tithe.date).toLocaleDateString('pt-BR')}</td>
+                    <td>R$ ${parseFloat(tithe.amount || 0).toFixed(2)}</td>
+                    <td>${tithe.cell_name || '-'}</td>
+                    <td>${tithe.member_name || '-'}</td>
+                </tr>
+            `;
+        });
+        htmlContent += '</tbody></table>';
+    }
+
+    htmlContent += '</body></html>';
+
+    // Criar blob e download
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, '_')}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('Relatório HTML gerado com sucesso! (Para PDF completo, seria necessário integrar com jsPDF ou serviço externo)');
+}
+
+// Função para gerar CSV
+function generateCSVReport(title, data, startDate, endDate) {
+    let csvContent = `data:text/csv;charset=utf-8,`;
+
+    // Cabeçalho
+    csvContent += `"${title}"\n`;
+    csvContent += `"Período: ${startDate.toLocaleDateString('pt-BR')} até ${endDate.toLocaleDateString('pt-BR')}"\n`;
+    csvContent += `"Data de geração: ${new Date().toLocaleString('pt-BR')}"\n\n`;
+
+    if (data.summary) {
+        csvContent += `"RESUMO FINANCEIRO"\n`;
+        csvContent += `"Total de Dízimos","R$ ${data.summary.totalTithes?.toFixed(2) || '0.00'}"\n`;
+        csvContent += `"Total de Ofertas","R$ ${data.summary.totalOfferings?.toFixed(2) || '0.00'}"\n`;
+        csvContent += `"Total de Ofertas Especiais","R$ ${data.summary.totalSpecialOfferings?.toFixed(2) || '0.00'}"\n`;
+        csvContent += `"Entradas Manuais","R$ ${data.summary.totalIncomes?.toFixed(2) || '0.00'}"\n`;
+        csvContent += `"Saídas Manuais","R$ ${data.summary.totalExpenses?.toFixed(2) || '0.00'}"\n`;
+        csvContent += `"Saldo Líquido","R$ ${data.summary.netBalance?.toFixed(2) || '0.00'}"\n\n`;
+    }
+
+    if (data.tithes?.tithes) {
+        csvContent += `"DÍZIMOS DETALHADOS"\n`;
+        csvContent += `"Data","Valor","Célula","Membro"\n`;
+        data.tithes.tithes.forEach(tithe => {
+            csvContent += `"${new Date(tithe.date).toLocaleDateString('pt-BR')}","R$ ${parseFloat(tithe.amount || 0).toFixed(2)}","${tithe.cell_name || '-'}","${tithe.member_name || '-'}"\n`;
+        });
+        csvContent += '\n';
+    }
+
+    // Criar download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${title.replace(/\s+/g, '_')}_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    alert('Relatório CSV gerado com sucesso!');
+}
+
+// Função para adicionar aos relatórios recentes
+function addToRecentReports(title, startDate, endDate, format) {
+    const recentReportsList = document.getElementById('recent-reports-list');
+    const reportItem = document.createElement('div');
+    reportItem.className = 'recent-report-item';
+    reportItem.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee;">
+            <div>
+                <strong>${title}</strong><br>
+                <small style="color: var(--text-muted);">
+                    ${startDate.toLocaleDateString('pt-BR')} - ${endDate.toLocaleDateString('pt-BR')} • ${format.toUpperCase()}
+                </small>
+            </div>
+            <small style="color: var(--text-muted);">${new Date().toLocaleTimeString('pt-BR')}</small>
+        </div>
+    `;
+
+    // Remove a mensagem inicial se existir
+    const noReportsMsg = recentReportsList.querySelector('p');
+    if (noReportsMsg) {
+        noReportsMsg.remove();
+    }
+
+    recentReportsList.insertBefore(reportItem, recentReportsList.firstChild);
+}
+
+// Função para fechar prévia do relatório
+function closeReportPreview() {
+    document.getElementById('report-preview').style.display = 'none';
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Inicializando aplicação...');
@@ -762,92 +1104,68 @@ function preFillReportForm() {
 // Data Handling
 async function loadData() {
     console.log('🔄 Buscando dados atualizados...');
-    try {
-        const [rRes, cRes, tRes, tithesRes, offeringsRes, specialRes, campaignsRes, transRes] = await Promise.all([
-            supabaseClient.from('reports').select('*').order('date', { ascending: false }),
-            supabaseClient.from('cells').select('*'),
-            supabaseClient.from('tokens').select('*'),
-            supabaseClient.from('tithes').select('*').order('date', { ascending: false }),
-            supabaseClient.from('offerings').select('*').order('date', { ascending: false }),
-            supabaseClient.from('special_offerings').select('*').order('date', { ascending: false }),
-            supabaseClient.from('campaigns').select('*'),
-            supabaseClient.from('financial_transactions').select('*').order('date', { ascending: false })
-        ]);
 
-        console.log('📊 Respostas recebidas:', {
-            reports: rRes.data?.length || 0,
-            cells: cRes.data?.length || 0,
-            tokens: tRes.data?.length || 0,
-            tithes: tithesRes.data?.length || 0,
-            offerings: offeringsRes.data?.length || 0,
-            specialOfferings: specialRes.data?.length || 0,
-            campaigns: campaignsRes.data?.length || 0,
-            transactions: transRes.data?.length || 0
-        });
+    const sources = [
+        { key: 'reports', table: 'reports', order: { column: 'date', ascending: false } },
+        { key: 'cells', table: 'cells' },
+        { key: 'tokens', table: 'tokens' },
+        { key: 'tithes', table: 'tithes', order: { column: 'date', ascending: false } },
+        { key: 'offerings', table: 'offerings', order: { column: 'date', ascending: false } },
+        { key: 'specialOfferings', table: 'special_offerings', order: { column: 'date', ascending: false } },
+        { key: 'campaigns', table: 'campaigns' },
+        { key: 'financialTransactions', table: 'financial_transactions', order: { column: 'date', ascending: false } }
+    ];
 
-        if (rRes.error) {
-            console.error('❌ Erro em reports:', rRes.error);
-            throw rRes.error;
-        }
-        if (cRes.error) {
-            console.error('❌ Erro em cells:', cRes.error);
-            throw cRes.error;
-        }
-        if (tRes.error) {
-            console.error('❌ Erro em tokens:', tRes.error);
-            throw tRes.error;
-        }
-        if (tithesRes.error) {
-            console.error('❌ Erro em tithes:', tithesRes.error);
-            throw tithesRes.error;
-        }
-        if (offeringsRes.error) {
-            console.error('❌ Erro em offerings:', offeringsRes.error);
-            throw offeringsRes.error;
-        }
-        if (specialRes.error) {
-            console.error('❌ Erro em special_offerings:', specialRes.error);
-            throw specialRes.error;
-        }
-        if (campaignsRes.error) {
-            console.error('❌ Erro em campaigns:', campaignsRes.error);
-            throw campaignsRes.error;
-        }
-        if (transRes.error) {
-            console.error('❌ Erro em financial_transactions:', transRes.error);
-            throw transRes.error;
-        }
+    const missingTables = [];
+    const failedQueries = [];
 
-        state.reports = rRes.data || [];
-        state.cells = cRes.data || [];
-        state.tokens = tRes.data || [];
-        state.tithes = tithesRes.data || [];
-        state.offerings = offeringsRes.data || [];
-        state.specialOfferings = specialRes.data || [];
-        state.campaigns = campaignsRes.data || [];
-        state.financialTransactions = transRes.data || [];
+    for (const source of sources) {
+        try {
+            let query = supabaseClient.from(source.table).select('*');
+            if (source.order) {
+                query = query.order(source.order.column, { ascending: source.order.ascending });
+            }
+            const { data, error } = await query;
+            if (error) {
+                console.warn(`⚠️ Falha ao carregar tabela ${source.table}:`, error.message);
+                failedQueries.push({ table: source.table, message: error.message });
+                if (error.message && error.message.includes('Could not find the table')) {
+                    missingTables.push(source.table);
+                }
+                state[source.key] = [];
+                continue;
+            }
+            state[source.key] = data || [];
+        } catch (err) {
+            console.error(`❌ Erro inesperado ao carregar ${source.table}:`, err);
+            state[source.key] = [];
+            failedQueries.push({ table: source.table, message: err.message });
+        }
+    }
 
-        console.log('✅ Sincronização concluída! Atualizando interface...');
-        console.log('📈 Estado atual:', {
-            reports: state.reports.length,
-            cells: state.cells.length,
-            tokens: state.tokens.length,
-            tithes: state.tithes.length,
-            offerings: state.offerings.length,
-            specialOfferings: state.specialOfferings.length,
-            campaigns: state.campaigns.length,
-            transactions: state.financialTransactions.length
-        });
-        
-        // Inicializa e atualiza tudo agora que temos os dados reais
-        initCharts(); 
-        updateDashboard();
-        renderHistory();
-        renderAllCells();
-        updateFinancialDashboard();
-    } catch (error) {
-        console.error('❌ Erro de sincronização:', error);
-        alert('Erro ao carregar dados: ' + error.message + '\n\nVerifique se o SQL foi executado no Supabase!');
+    console.log('📊 Estado atualizado:', {
+        reports: state.reports.length,
+        cells: state.cells.length,
+        tokens: state.tokens.length,
+        tithes: state.tithes.length,
+        offerings: state.offerings.length,
+        specialOfferings: state.specialOfferings.length,
+        campaigns: state.campaigns.length,
+        transactions: state.financialTransactions.length
+    });
+
+    initCharts();
+    updateDashboard();
+    renderHistory();
+    renderAllCells();
+    updateFinancialDashboard();
+
+    if (missingTables.length > 0) {
+        const uniqueMissing = [...new Set(missingTables)].join(', ');
+        alert(`Erro ao carregar dados: tabelas ausentes no Supabase: ${uniqueMissing}.\nExecute o SQL de criação de tabelas no Supabase ou verifique se está usando o projeto correto.`);
+    } else if (failedQueries.length > 0) {
+        console.warn('🔧 Algumas consultas falharam:', failedQueries);
+        alert('Algumas tabelas não puderam ser carregadas. Veja o console do navegador para detalhes.');
     }
 }
 
@@ -1318,10 +1636,21 @@ function switchFinancialTab(tab) {
     currentFinancialTab = tab;
     document.getElementById('finance-tab-summary').classList.toggle('active', tab === 'summary');
     document.getElementById('finance-tab-manual').classList.toggle('active', tab === 'manual');
+    document.getElementById('finance-tab-reports').classList.toggle('active', tab === 'reports');
     document.getElementById('financial-summary-section').classList.toggle('hidden', tab !== 'summary');
     document.getElementById('financial-manual-section').classList.toggle('hidden', tab !== 'manual');
+    document.getElementById('financial-reports-section').classList.toggle('hidden', tab !== 'reports');
     if (tab === 'manual') {
         updateManualTransactionsTable();
+    }
+    if (tab === 'reports') {
+        // Definir datas padrão para o mês atual
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        document.getElementById('report-start-date').value = startOfMonth.toISOString().split('T')[0];
+        document.getElementById('report-end-date').value = endOfMonth.toISOString().split('T')[0];
     }
 }
 
