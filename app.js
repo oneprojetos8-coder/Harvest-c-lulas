@@ -2012,18 +2012,25 @@ function updateManualTransactionsTable() {
         const { category, notes } = parseManualDescription(tx.description);
         const direction = tx.type === 'manual_expense' ? 'Saída' : 'Entrada';
 
-        // Formatar categoria baseada no tipo
         let displayCategory = category;
+        let displayDescription = notes;
+
         if (tx.type === 'manual_income') {
             if (category.startsWith('Dízimo de ')) {
                 displayCategory = 'Dízimo';
+                const memberName = category.replace('Dízimo de ', '');
+                displayDescription = `Dizimista: ${memberName}` + (notes ? ` — ${notes}` : '');
             } else if (category === 'Oferta') {
                 displayCategory = 'Oferta';
+                displayDescription = notes || 'Oferta geral';
             } else if (category.startsWith('Arrecadação:')) {
                 displayCategory = 'Arrecadação';
+                const origin = category.replace('Arrecadação: ', '');
+                displayDescription = `Origem: ${origin}` + (notes ? ` — ${notes}` : '');
             }
         } else {
             displayCategory = category.replace('Saída: ', '');
+            displayDescription = `Motivo: ${displayCategory}` + (notes ? ` — ${notes}` : '');
         }
 
         return `
@@ -2032,7 +2039,7 @@ function updateManualTransactionsTable() {
                 <td>${direction}</td>
                 <td>${displayCategory}</td>
                 <td>${formatBRL(tx.amount)}</td>
-                <td>${notes}</td>
+                <td>${displayDescription}</td>
             </tr>
         `;
     }).join('');
