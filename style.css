@@ -849,6 +849,58 @@ body.role-treasurer .leader-only {
     font-size: 0.8rem;
 }
 
+/* Dizimista Report Styles */
+.dizimista-report {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.dizimista-item {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dizimista-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dizimista-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.dizimista-info {
+    flex: 1;
+}
+
+.dizimista-name {
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.dizimista-date {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
 .form-group label {
     display: block;
     margin-bottom: 0.4rem;

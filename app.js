@@ -1809,6 +1809,7 @@ function updateFinancialDashboard() {
     }
 
     updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings, manualIncomes, manualExpenses);
+    updateDizimistaReport(filteredTithes);
     updateFinancialChart(startDate, endDate);
     updateMainFinancialCard(totalAmount, growth);
     updateManualTransactionsTable();
@@ -1887,6 +1888,33 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
             <td colspan="5" style="text-align: center;">Nenhum lançamento manual encontrado para o período.</td>
         </tr>
     `;
+}
+
+// Função para atualizar o relatório de dizimistas
+function updateDizimistaReport(tithes) {
+    const container = document.getElementById('dizimista-report');
+    if (!container) return;
+
+    const sortedTithes = tithes.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const items = sortedTithes.map(tithe => {
+        const date = new Date(tithe.date).toLocaleDateString('pt-BR');
+        const name = tithe.dizimista_name || 'Nome não informado';
+        return `
+            <div class="dizimista-item">
+                <div class="dizimista-icon">
+                    <i data-lucide="user"></i>
+                </div>
+                <div class="dizimista-info">
+                    <div class="dizimista-name">${name}</div>
+                    <div class="dizimista-date">${date}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = items.length > 0 ? items.join('') : '<p style="text-align: center; color: var(--text-muted);">Nenhum dízimo encontrado para o período.</p>';
+    lucide.createIcons();
 }
 
 // Função para alternar campos baseado no tipo de transação
