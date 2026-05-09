@@ -1793,20 +1793,6 @@ function updateFinancialDashboard() {
         growthElement.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
     }
 
-    const allContributions = [...filteredTithes, ...filteredOfferings, ...filteredSpecialOfferings, ...manualIncomes]
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    const lastContribElement = document.getElementById('financial-last-contribution');
-    if (lastContribElement) {
-        if (allContributions.length > 0) {
-            const last = allContributions[0];
-            const dateStr = new Date(last.date).toLocaleDateString('pt-BR');
-            lastContribElement.innerText = `${formatBRL(last.amount)} (${dateStr})`;
-        } else {
-            lastContribElement.innerText = 'Nenhuma';
-        }
-    }
-
     updateFinancialSummaryTable(filteredTithes, filteredOfferings, filteredSpecialOfferings, manualIncomes, manualExpenses);
     updateFinancialChart(startDate, endDate);
     updateMainFinancialCard(totalAmount, growth);
