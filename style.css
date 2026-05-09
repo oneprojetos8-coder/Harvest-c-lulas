@@ -144,8 +144,8 @@ main {
 }
 
 .card-value {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 600;
     color: var(--primary);
 }
 
@@ -297,7 +297,7 @@ main {
     }
 
     .card-value {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 }
 .form-group {
