@@ -1860,6 +1860,32 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
     `;
 }
 
+// Função para alternar campos baseado no tipo de transação
+function toggleTransactionFields() {
+    const type = document.getElementById('manual-transaction-type').value;
+    const incomeFields = document.getElementById('income-fields');
+    const expenseFields = document.getElementById('expense-fields');
+
+    if (type === 'manual_income') {
+        incomeFields.style.display = 'block';
+        expenseFields.style.display = 'none';
+        toggleIncomeSpecificFields(); // Atualizar campos específicos de entrada
+    } else {
+        incomeFields.style.display = 'none';
+        expenseFields.style.display = 'block';
+    }
+}
+
+// Função para alternar campos específicos de entrada
+function toggleIncomeSpecificFields() {
+    const category = document.getElementById('income-category').value;
+    const titheFields = document.getElementById('tithe-fields');
+    const collectionFields = document.getElementById('collection-fields');
+
+    titheFields.style.display = category === 'tithe' ? 'block' : 'none';
+    collectionFields.style.display = category === 'collection' ? 'block' : 'none';
+}
+
 async function createManualTransaction() {
     if (!canEditFinances()) {
         alert('Apenas a equipe financeira pode registrar lançamentos manuais.');
@@ -1867,7 +1893,6 @@ async function createManualTransaction() {
     }
 
     const type = document.getElementById('manual-transaction-type').value;
-    const category = document.getElementById('manual-transaction-category').value || 'Manual';
     const amount = parseFloat(document.getElementById('manual-transaction-amount').value || '0');
     const date = document.getElementById('manual-transaction-date').value;
     const notes = document.getElementById('manual-transaction-description').value || '';
@@ -1877,7 +1902,42 @@ async function createManualTransaction() {
         return;
     }
 
-    const description = `${category}||${notes}`;
+    let category = '';
+    let description = '';
+
+    if (type === 'manual_income') {
+        const incomeCategory = document.getElementById('income-category').value;
+
+        if (incomeCategory === 'tithe') {
+            const memberName = document.getElementById('tithe-member-name').value.trim();
+            if (!memberName) {
+                alert('Nome do dizimista é obrigatório para lançamentos de dízimo.');
+                return;
+            }
+            category = 'Dízimo';
+            description = `Dízimo de ${memberName}||${notes}`;
+        } else if (incomeCategory === 'offering') {
+            category = 'Oferta';
+            description = `Oferta||${notes}`;
+        } else if (incomeCategory === 'collection') {
+            const source = document.getElementById('collection-source').value.trim();
+            if (!source) {
+                alert('Origem da contribuição é obrigatória para arrecadações.');
+                return;
+            }
+            category = 'Arrecadação';
+            description = `Arrecadação: ${source}||${notes}`;
+        }
+    } else {
+        const reason = document.getElementById('expense-reason').value.trim();
+        if (!reason) {
+            alert('Motivo da saída é obrigatório.');
+            return;
+        }
+        category = reason;
+        description = `Saída: ${reason}||${notes}`;
+    }
+
     const transactionData = {
         type,
         amount,
@@ -1892,10 +1952,14 @@ async function createManualTransaction() {
         }
 
         alert('Lançamento manual registrado com sucesso!');
-        document.getElementById('manual-transaction-category').value = '';
+
+        // Limpar todos os campos
         document.getElementById('manual-transaction-amount').value = '';
         document.getElementById('manual-transaction-date').value = '';
         document.getElementById('manual-transaction-description').value = '';
+        document.getElementById('tithe-member-name').value = '';
+        document.getElementById('collection-source').value = '';
+        document.getElementById('expense-reason').value = '';
 
         await loadData();
         switchFinancialTab('manual');
@@ -1918,11 +1982,26 @@ function updateManualTransactionsTable() {
         const dateStr = new Date(tx.date).toLocaleDateString('pt-BR');
         const { category, notes } = parseManualDescription(tx.description);
         const direction = tx.type === 'manual_expense' ? 'Saída' : 'Entrada';
+
+        // Formatar categoria baseada no tipo
+        let displayCategory = category;
+        if (tx.type === 'manual_income') {
+            if (category.startsWith('Dízimo de ')) {
+                displayCategory = 'Dízimo';
+            } else if (category === 'Oferta') {
+                displayCategory = 'Oferta';
+            } else if (category.startsWith('Arrecadação:')) {
+                displayCategory = 'Arrecadação';
+            }
+        } else {
+            displayCategory = category.replace('Saída: ', '');
+        }
+
         return `
             <tr>
                 <td>${dateStr}</td>
                 <td>${direction}</td>
-                <td>${category}</td>
+                <td>${displayCategory}</td>
                 <td>${formatBRL(tx.amount)}</td>
                 <td>${notes}</td>
             </tr>

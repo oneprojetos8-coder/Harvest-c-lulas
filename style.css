@@ -318,6 +318,31 @@ input, select, textarea {
     border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Estilos específicos para campos condicionais */
+#income-fields, #expense-fields {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(0, 123, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 123, 255, 0.1);
+}
+
+#tithe-fields, #collection-fields {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(40, 167, 69, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(40, 167, 69, 0.1);
+}
     transition: border-color 0.2s;
 }
 
