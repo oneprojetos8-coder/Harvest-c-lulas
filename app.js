@@ -1827,50 +1827,64 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
     const tbody = document.getElementById('financial-summary-body');
     if (!tbody) return;
 
-    const manualTithes = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Dízimo');
-    const manualOfferings = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Oferta');
-    const manualCollections = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Arrecadação');
+    const allManualTransactions = [...manualIncomes, ...manualExpenses];
+    const summaryGroups = {};
 
-    const tithesCount = tithes.length + manualTithes.length;
-    const tithesTotal = tithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) + manualTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const tithesAvg = tithesCount > 0 ? tithesTotal / tithesCount : 0;
+    allManualTransactions.forEach(tx => {
+        const { category } = parseManualDescription(tx.description);
+        const typeLabel = tx.type === 'manual_expense' ? 'Saída' : 'Entrada';
+        let detail = category;
+        let summaryLabel = category;
 
-    const offeringsCount = offerings.length + specialOfferings.length + manualOfferings.length;
-    const offeringsTotal = offerings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) + specialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) + manualOfferings.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const offeringsAvg = offeringsCount > 0 ? offeringsTotal / offeringsCount : 0;
+        if (tx.type === 'manual_income') {
+            if (category.startsWith('Dízimo de ')) {
+                summaryLabel = 'Dízimo';
+                detail = category.replace('Dízimo de ', '');
+            } else if (category.startsWith('Arrecadação: ')) {
+                summaryLabel = 'Arrecadação';
+                detail = category.replace('Arrecadação: ', '');
+            } else if (category === 'Oferta') {
+                summaryLabel = 'Oferta';
+                detail = 'Oferta geral';
+            }
+        } else {
+            if (category.startsWith('Saída: ')) {
+                detail = category.replace('Saída: ', '');
+                summaryLabel = 'Saída';
+            }
+        }
 
-    const collectionsCount = manualCollections.length;
-    const collectionsTotal = manualCollections.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const collectionsAvg = collectionsCount > 0 ? collectionsTotal / collectionsCount : 0;
+        const key = `${typeLabel}|${summaryLabel}|${detail}`;
+        if (!summaryGroups[key]) {
+            summaryGroups[key] = {
+                type: typeLabel,
+                category: summaryLabel,
+                detail,
+                count: 0,
+                total: 0
+            };
+        }
 
-    const expensesCount = manualExpenses.length;
-    const expensesTotal = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const expensesAvg = expensesCount > 0 ? expensesTotal / expensesCount : 0;
+        summaryGroups[key].count += 1;
+        summaryGroups[key].total += parseFloat(tx.amount || 0);
+    });
 
-    tbody.innerHTML = `
+    const rows = Object.values(summaryGroups).map(group => {
+        const average = group.count > 0 ? group.total / group.count : 0;
+        return `
+            <tr>
+                <td>${group.type} - ${group.category}</td>
+                <td>${group.detail}</td>
+                <td>${group.count}</td>
+                <td>${formatBRL(group.total)}</td>
+                <td>${formatBRL(average)}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rows.length > 0 ? rows.join('') : `
         <tr>
-            <td>Dízimos</td>
-            <td>${tithesCount}</td>
-            <td>${formatBRL(tithesTotal)}</td>
-            <td>${formatBRL(tithesAvg)}</td>
-        </tr>
-        <tr>
-            <td>Ofertas</td>
-            <td>${offeringsCount}</td>
-            <td>${formatBRL(offeringsTotal)}</td>
-            <td>${formatBRL(offeringsAvg)}</td>
-        </tr>
-        <tr>
-            <td>Arrecadações</td>
-            <td>${collectionsCount}</td>
-            <td>${formatBRL(collectionsTotal)}</td>
-            <td>${formatBRL(collectionsAvg)}</td>
-        </tr>
-        <tr>
-            <td>Saídas</td>
-            <td>${expensesCount}</td>
-            <td>${formatBRL(expensesTotal)}</td>
-            <td>${formatBRL(expensesAvg)}</td>
+            <td colspan="5" style="text-align: center;">Nenhum lançamento manual encontrado para o período.</td>
         </tr>
     `;
 }
