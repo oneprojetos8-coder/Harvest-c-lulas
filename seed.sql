@@ -68,11 +68,11 @@ INSERT INTO campaigns (name, description, start_date, end_date, goal_amount, cur
 ('Campanha de Missões', 'Campanha para apoiar missões internacionais', '2026-05-01', '2026-05-31', 5000.00, 740.00, 'active');
 
 -- Inserir transações financeiras manuais
-INSERT INTO financial_transactions (type, reference_id, amount, date, description) VALUES
-('manual_income', 0, 500.00, '2026-05-01', 'Caixa||Entrada de caixa semanal'),
-('manual_expense', 0, 150.00, '2026-05-05', 'Despesa Operacional||Compra de materiais'),
-('manual_income', 0, 300.00, '2026-05-08', 'Dízimo Extra||Dízimo especial'),
-('manual_expense', 0, 200.00, '2026-05-12', 'Campanha||Investimento em campanha'),
-('manual_income', 0, 400.00, '2026-05-15', 'Caixa||Entrada de caixa semanal'),
-('manual_expense', 0, 80.00, '2026-05-18', 'Despesa Operacional||Manutenção'),
-('manual_income', 0, 250.00, '2026-05-22', 'Dízimo Extra||Dízimo especial');
+INSERT INTO financial_transactions (type, amount, date, description) VALUES
+('manual_income', 500.00, '2026-05-01', 'Caixa||Entrada de caixa semanal'),
+('manual_expense', 150.00, '2026-05-05', 'Despesa Operacional||Compra de materiais'),
+('manual_income', 300.00, '2026-05-08', 'Dízimo Extra||Dízimo especial'),
+('manual_expense', 200.00, '2026-05-12', 'Campanha||Investimento em campanha'),
+('manual_income', 400.00, '2026-05-15', 'Caixa||Entrada de caixa semanal'),
+('manual_expense', 80.00, '2026-05-18', 'Despesa Operacional||Manutenção'),
+('manual_income', 250.00, '2026-05-22', 'Dízimo Extra||Dízimo especial');

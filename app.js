@@ -1892,28 +1892,31 @@ async function createManualTransaction() {
     }
 
     const description = `${category}||${notes}`;
-
-    const { error } = await supabaseClient.from('financial_transactions').insert([{
+    const transactionData = {
         type,
-        reference_id: 0,
         amount,
         date,
         description
-    }]);
+    };
 
-    if (error) {
-        alert('Erro ao salvar lançamento: ' + error.message);
-        return;
+    try {
+        const { error } = await supabaseClient.from('financial_transactions').insert([transactionData]);
+        if (error) {
+            throw error;
+        }
+
+        alert('Lançamento manual registrado com sucesso!');
+        document.getElementById('manual-transaction-category').value = '';
+        document.getElementById('manual-transaction-amount').value = '';
+        document.getElementById('manual-transaction-date').value = '';
+        document.getElementById('manual-transaction-description').value = '';
+
+        await loadData();
+        switchFinancialTab('manual');
+    } catch (err) {
+        console.error('Erro ao salvar lançamento manual:', err);
+        alert('Erro ao salvar lançamento: ' + (err.message || err));
     }
-
-    alert('Lançamento manual registrado com sucesso!');
-    document.getElementById('manual-transaction-category').value = '';
-    document.getElementById('manual-transaction-amount').value = '';
-    document.getElementById('manual-transaction-date').value = '';
-    document.getElementById('manual-transaction-description').value = '';
-
-    await loadData();
-    switchFinancialTab('manual');
 }
 
 function updateManualTransactionsTable() {
