@@ -1839,17 +1839,17 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
         if (tx.type === 'manual_income') {
             if (category.startsWith('Dízimo de ')) {
                 summaryLabel = 'Dízimo';
-                detail = category.replace('Dízimo de ', '');
+                detail = `Dizimista: ${category.replace('Dízimo de ', '')}`;
             } else if (category.startsWith('Arrecadação: ')) {
                 summaryLabel = 'Arrecadação';
-                detail = category.replace('Arrecadação: ', '');
+                detail = `Origem: ${category.replace('Arrecadação: ', '')}`;
             } else if (category === 'Oferta') {
                 summaryLabel = 'Oferta';
                 detail = 'Oferta geral';
             }
         } else {
             if (category.startsWith('Saída: ')) {
-                detail = category.replace('Saída: ', '');
+                detail = `Motivo: ${category.replace('Saída: ', '')}`;
                 summaryLabel = 'Saída';
             }
         }
