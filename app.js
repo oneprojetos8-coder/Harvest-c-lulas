@@ -1731,6 +1731,14 @@ function parseManualDescription(description) {
     return { category: category || '', notes: notes || '' };
 }
 
+function getManualIncomeCategory(transaction) {
+    const { category } = parseManualDescription(transaction.description);
+    if (category.startsWith('Dízimo de ')) return 'Dízimo';
+    if (category === 'Oferta') return 'Oferta';
+    if (category.startsWith('Arrecadação:')) return 'Arrecadação';
+    return category || 'Entrada';
+}
+
 function formatBRL(value) {
     return `R$ ${parseFloat(value || 0).toFixed(2)}`;
 }
@@ -1750,6 +1758,13 @@ function updateFinancialDashboard() {
 
     const manualIncomes = filteredTransactions.filter(t => t.type === 'manual_income');
     const manualExpenses = filteredTransactions.filter(t => t.type === 'manual_expense');
+    const manualTithes = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Dízimo');
+    const manualOfferings = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Oferta');
+    const manualCollections = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Arrecadação');
+
+    const manualTithesTotal = manualTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualOfferingsTotal = manualOfferings.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualCollectionsTotal = manualCollections.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const totalIncomes = manualIncomes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const totalExpenses = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
@@ -1760,9 +1775,9 @@ function updateFinancialDashboard() {
     document.getElementById('financial-inflows').innerText = formatBRL(totalTithes + totalOfferings + totalSpecialOfferings + totalIncomes);
     document.getElementById('financial-outflows').innerText = formatBRL(totalExpenses);
     document.getElementById('financial-balance').innerText = formatBRL(totalAmount);
-    document.getElementById('financial-tithes').innerText = formatBRL(totalTithes);
-    document.getElementById('financial-offerings').innerText = formatBRL(totalOfferings);
-    document.getElementById('financial-contributions').innerText = totalContributions;
+    document.getElementById('financial-tithes').innerText = formatBRL(totalTithes + manualTithesTotal);
+    document.getElementById('financial-offerings').innerText = formatBRL(totalOfferings + totalSpecialOfferings + manualOfferingsTotal);
+    document.getElementById('financial-contributions').innerText = formatBRL(manualCollectionsTotal);
 
     document.getElementById('finance-tab-manual').style.display = isFinance ? 'inline-flex' : 'none';
     document.getElementById('financial-manual-warning').classList.toggle('hidden', isFinance);
@@ -1812,25 +1827,25 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
     const tbody = document.getElementById('financial-summary-body');
     if (!tbody) return;
 
-    const tithesCount = tithes.length;
-    const tithesTotal = tithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const manualTithes = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Dízimo');
+    const manualOfferings = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Oferta');
+    const manualCollections = manualIncomes.filter(t => getManualIncomeCategory(t) === 'Arrecadação');
+
+    const tithesCount = tithes.length + manualTithes.length;
+    const tithesTotal = tithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) + manualTithes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const tithesAvg = tithesCount > 0 ? tithesTotal / tithesCount : 0;
 
-    const offeringsCount = offerings.length;
-    const offeringsTotal = offerings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0);
+    const offeringsCount = offerings.length + specialOfferings.length + manualOfferings.length;
+    const offeringsTotal = offerings.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0) + specialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) + manualOfferings.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const offeringsAvg = offeringsCount > 0 ? offeringsTotal / offeringsCount : 0;
 
-    const specialCount = specialOfferings.length;
-    const specialTotal = specialOfferings.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-    const specialAvg = specialCount > 0 ? specialTotal / specialCount : 0;
+    const collectionsCount = manualCollections.length;
+    const collectionsTotal = manualCollections.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const collectionsAvg = collectionsCount > 0 ? collectionsTotal / collectionsCount : 0;
 
-    const manualIncomesCount = manualIncomes.length;
-    const manualIncomesTotal = manualIncomes.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const manualIncomesAvg = manualIncomesCount > 0 ? manualIncomesTotal / manualIncomesCount : 0;
-
-    const manualExpensesCount = manualExpenses.length;
-    const manualExpensesTotal = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const manualExpensesAvg = manualExpensesCount > 0 ? manualExpensesTotal / manualExpensesCount : 0;
+    const expensesCount = manualExpenses.length;
+    const expensesTotal = manualExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const expensesAvg = expensesCount > 0 ? expensesTotal / expensesCount : 0;
 
     tbody.innerHTML = `
         <tr>
@@ -1846,16 +1861,16 @@ function updateFinancialSummaryTable(tithes, offerings, specialOfferings, manual
             <td>${formatBRL(offeringsAvg)}</td>
         </tr>
         <tr>
-            <td>Ofertas Especiais</td>
-            <td>${specialCount}</td>
-            <td>${formatBRL(specialTotal)}</td>
-            <td>${formatBRL(specialAvg)}</td>
+            <td>Arrecadações</td>
+            <td>${collectionsCount}</td>
+            <td>${formatBRL(collectionsTotal)}</td>
+            <td>${formatBRL(collectionsAvg)}</td>
         </tr>
         <tr>
-            <td>Lançamentos Manuais</td>
-            <td>${manualIncomesCount + manualExpensesCount}</td>
-            <td>${formatBRL(manualIncomesTotal - manualExpensesTotal)}</td>
-            <td>${formatBRL((manualIncomesCount + manualExpensesCount) > 0 ? (manualIncomesTotal - manualExpensesTotal) / (manualIncomesCount + manualExpensesCount) : 0)}</td>
+            <td>Saídas</td>
+            <td>${expensesCount}</td>
+            <td>${formatBRL(expensesTotal)}</td>
+            <td>${formatBRL(expensesAvg)}</td>
         </tr>
     `;
 }
