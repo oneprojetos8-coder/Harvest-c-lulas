@@ -123,41 +123,52 @@ main {
 }
 
 .card {
-    background: var(--surface);
-    padding: 1.75rem; /* Mais respiro interno */
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-    transition: transform 0.2s;
+    background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+    padding: 1.75rem;
+    border-radius: calc(var(--radius) + 4px);
+    box-shadow: 0 18px 40px rgba(13, 44, 96, 0.08);
+    border: 1px solid rgba(58, 134, 255, 0.12);
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    border-color: rgba(58, 134, 255, 0.3);
+    box-shadow: 0 22px 48px rgba(13, 44, 96, 0.12);
 }
 
 .card-title {
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
 }
 
 .card-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--primary);
+    font-size: 2.15rem;
+    font-weight: 700;
+    color: #032b60;
+    line-height: 1.1;
 }
 
 .card-trend {
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    margin-top: 1rem;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 0.5rem;
+    color: var(--text-muted);
 }
 
 .trend-up { color: var(--success); }
+
+.trend-down { color: #e74c3c; }
+
+.card-trend i {
+    color: inherit;
+}
+
 .trend-down { color: var(--danger); }
 
 /* Charts */
@@ -725,15 +736,16 @@ body.role-treasurer .leader-only {
 
 .financial-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1rem;
 }
 
 .financial-summary-grid .card {
-    min-height: 140px;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    padding: 1.75rem 1.5rem;
 }
 
 .chart-container {

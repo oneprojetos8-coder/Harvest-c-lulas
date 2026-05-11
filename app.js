@@ -1740,7 +1740,13 @@ function getManualIncomeCategory(transaction) {
 }
 
 function formatBRL(value) {
-    return `R$ ${parseFloat(value || 0).toFixed(2)}`;
+    const number = parseFloat(value || 0);
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
 }
 
 function updateFinancialDashboard() {
