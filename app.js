@@ -1145,7 +1145,7 @@ async function loadData() {
 
     for (const source of sources) {
         try {
-            let query = supabaseClient.from(source.table).select('*').eq('pastor_id', pastorId);
+            let query = supabaseClient.from(source.table).select('*').or(`pastor_id.eq.${pastorId},pastor_id.is.null`);
             if (source.order) {
                 query = query.order(source.order.column, { ascending: source.order.ascending });
             }
