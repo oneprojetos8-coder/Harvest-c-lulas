@@ -11,7 +11,8 @@ let state = {
     offerings: [],
     specialOfferings: [],
     campaigns: [],
-    financialTransactions: []
+    financialTransactions: [],
+    pastor_id: null
 };
 
 // Teste de conexão com Supabase
@@ -609,6 +610,7 @@ async function validateAccess() {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
                 console.log('✅ Login pastor bem-sucedido!');
+                sessionStorage.setItem('cbna_pastor_id', data.user.id);
                 handleLogin('pastor', 'Administração');
             }
         } else {
@@ -633,6 +635,7 @@ async function validateAccess() {
 
             if (tokens && tokens.length > 0) {
                 console.log('✅ Token válido encontrado:', tokens[0]);
+                sessionStorage.setItem('cbna_pastor_id', tokens[0].pastor_id);
                 handleLogin(pendingRole, tokens[0].cell_name || 'Tesoureiro');
             } else {
                 console.log('❌ Token inválido!');
@@ -765,7 +768,8 @@ async function handleSetupSubmit(e) {
         location: document.getElementById('setup-location').value,
         day: document.getElementById('setup-day').value,
         time: document.getElementById('setup-time').value,
-        status: 'active'
+        status: 'active',
+        pastor_id: sessionStorage.getItem('cbna_pastor_id')
     };
 
     const { error } = await supabaseClient.from('cells').upsert([cellData], { onConflict: 'name' });
@@ -799,7 +803,8 @@ async function generateToken() {
     const newToken = {
         code: tokenCode,
         cell_name: role === 'leader' ? cellName : cellName || 'Tesoureiro',
-        role: role
+        role: role,
+        pastor_id: sessionStorage.getItem('cbna_pastor_id')
     };
 
     const { error } = await supabaseClient.from('tokens').insert([newToken]);
@@ -1121,6 +1126,8 @@ function preFillReportForm() {
 // Data Handling
 async function loadData() {
     console.log('🔄 Buscando dados atualizados...');
+    const pastorId = sessionStorage.getItem('cbna_pastor_id');
+    if (!pastorId) return;
 
     const sources = [
         { key: 'reports', table: 'reports', order: { column: 'date', ascending: false } },
@@ -1138,7 +1145,7 @@ async function loadData() {
 
     for (const source of sources) {
         try {
-            let query = supabaseClient.from(source.table).select('*');
+            let query = supabaseClient.from(source.table).select('*').eq('pastor_id', pastorId);
             if (source.order) {
                 query = query.order(source.order.column, { ascending: source.order.ascending });
             }
@@ -1182,7 +1189,6 @@ async function loadData() {
         alert(`Erro ao carregar dados: tabelas ausentes no Supabase: ${uniqueMissing}.\nExecute o SQL de criação de tabelas no Supabase ou verifique se está usando o projeto correto.`);
     } else if (failedQueries.length > 0) {
         console.warn('🔧 Algumas consultas falharam:', failedQueries);
-        alert('Algumas tabelas não puderam ser carregadas. Veja o console do navegador para detalhes.');
     }
 }
 
@@ -1225,7 +1231,8 @@ async function handleFormSubmit(e) {
         occurred: document.getElementById('form-occurred').value,
         notes: document.getElementById('form-notes').value,
         photo: photoData,
-        timestamp: new Date(document.getElementById('form-date').value + 'T12:00:00').getTime()
+        timestamp: new Date(document.getElementById('form-date').value + 'T12:00:00').getTime(),
+        pastor_id: sessionStorage.getItem('cbna_pastor_id')
     };
 
     const { error } = await supabaseClient.from('reports').insert([newReport]);
@@ -2005,7 +2012,8 @@ async function createManualTransaction() {
         type,
         amount,
         date,
-        description
+        description,
+        pastor_id: sessionStorage.getItem('cbna_pastor_id')
     };
 
     try {
