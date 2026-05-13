@@ -709,6 +709,7 @@ async function checkAuth() {
             loadPastorNotes();
         } else if (role === 'treasurer') {
             switchView('pastor-financial');
+            updateFinancialDashboard();
         } else {
             // Busca a célula no estado carregado do Supabase
             const cellInfo = state.cells.find(c => c.name === cellName);
@@ -750,6 +751,7 @@ async function checkAuth() {
 
         initCharts();
         updateDashboard();
+        updateFinancialDashboard();
         renderHistory();
         checkAlerts();
     } else {
@@ -2033,7 +2035,8 @@ async function createManualTransaction() {
         document.getElementById('expense-reason').value = '';
 
         await loadData();
-        switchFinancialTab('manual');
+        updateFinancialDashboard();
+        switchFinancialTab('summary'); // volta para o resumo já atualizado
     } catch (err) {
         console.error('Erro ao salvar lançamento manual:', err);
         alert('Erro ao salvar lançamento: ' + (err.message || err));
