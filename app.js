@@ -2085,6 +2085,10 @@ function updateManualTransactionsTable() {
                 <td>${displayCategory}</td>
                 <td>${formatBRL(tx.amount)}</td>
                 <td>${displayDescription}</td>
+                <td style="text-align:center">
+                    <button title="Editar" onclick="openTxEdit('${tx.id}')" style="background:#e3f2fd;color:#1976d2;border:none;border-radius:6px;padding:4px 7px;cursor:pointer;margin-right:4px;">&#9998;</button>
+                    <button title="Excluir" onclick="deleteTx('${tx.id}')" style="background:#fee2e2;color:#ef4444;border:none;border-radius:6px;padding:4px 7px;cursor:pointer;">&#128465;</button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -2161,4 +2165,62 @@ function updateMainFinancialCard(totalAmount, growth) {
         trend.className = `card-trend ${growth >= 0 ? 'trend-up' : 'trend-down'}`;
     }
 }
+
+// === EDITAR / EXCLUIR LANÇAMENTOS ===
+let _editingTxId = null;
+
+function openTxEdit(id) {
+    const tx = state.financialTransactions.find(t => String(t.id) === String(id));
+    if (!tx) return;
+    _editingTxId = id;
+    document.getElementById('etx-date').value = tx.date;
+    document.getElementById('etx-amount').value = tx.amount;
+    const notes = tx.description ? (tx.description.split('||')[1] || '') : '';
+    document.getElementById('etx-notes').value = notes;
+    const modal = document.getElementById('edit-tx-modal');
+    modal.style.display = 'flex';
+}
+
+function closeTxModal() {
+    document.getElementById('edit-tx-modal').style.display = 'none';
+    _editingTxId = null;
+}
+
+async function saveTxEdit() {
+    if (!_editingTxId) return;
+    const tx = state.financialTransactions.find(t => String(t.id) === String(_editingTxId));
+    if (!tx) return;
+    const newDate = document.getElementById('etx-date').value;
+    const newAmount = parseFloat(document.getElementById('etx-amount').value || '0');
+    const newNotes = document.getElementById('etx-notes').value.trim();
+    if (!newDate || !newAmount) { alert('Data e valor são obrigatórios.'); return; }
+    const prefix = tx.description ? tx.description.split('||')[0] : '';
+    const { error } = await supabaseClient
+        .from('financial_transactions')
+        .update({ date: newDate, amount: newAmount, description: `${prefix}||${newNotes}` })
+        .eq('id', _editingTxId);
+    if (error) { alert('Erro ao salvar: ' + error.message); return; }
+    closeTxModal();
+    await loadData();
+    updateFinancialDashboard();
+    switchFinancialTab('manual');
+}
+
+async function deleteTx(id) {
+    if (!confirm('Excluir este lançamento?')) return;
+    const { error } = await supabaseClient
+        .from('financial_transactions')
+        .delete()
+        .eq('id', id);
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    await loadData();
+    updateFinancialDashboard();
+    switchFinancialTab('manual');
+}
+
+// Expor APENAS as 4 funções novas no window
+window.openTxEdit = openTxEdit;
+window.closeTxModal = closeTxModal;
+window.saveTxEdit = saveTxEdit;
+window.deleteTx = deleteTx;
 
