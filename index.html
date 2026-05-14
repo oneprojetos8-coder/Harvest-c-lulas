@@ -119,6 +119,12 @@
                     <span>Financeiro</span>
                 </a>
             </li>
+            <li class="treasurer-only">
+                <a href="#" class="nav-link" onclick="switchView('treasurer-notes')">
+                    <i data-lucide="notebook"></i>
+                    <span>Anotações</span>
+                </a>
+            </li>
             <li class="leader-only">
                 <a href="#" class="nav-link" id="nav-leader" onclick="switchView('leader-view')">
             <div class="logo">
@@ -375,6 +381,31 @@
                     </div>
                     <input type="text" id="note-title-input" placeholder="Título da Nota" style="width: 100%; padding: 1.5rem 2rem 0.5rem 2rem; border: none; font-size: 1.5rem; font-weight: 700; outline: none;">
                     <textarea id="pastor-notes-area" style="flex: 1; width: 100%; padding: 0.5rem 2rem 2rem 2rem; border: none; outline: none; font-size: 1.1rem; line-height: 1.6; resize: none;" placeholder="Comece a escrever..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- TREASURER NOTES VIEW -->
+        <section id="treasurer-notes" class="view-section">
+            <div class="header">
+                <h1>Anotações do Tesoureiro</h1>
+                <button class="btn btn-primary" onclick="createNewTNote()"><i data-lucide="plus"></i> Nova Nota</button>
+            </div>
+            <div style="display:grid;grid-template-columns:280px 1fr;gap:0;background:white;border-radius:12px;overflow:hidden;height:600px;border:1px solid #eee;box-shadow:var(--shadow);">
+                <div style="border-right:1px solid #eee;background:#f9f9f9;overflow-y:auto;">
+                    <div id="tnotes-list"></div>
+                </div>
+                <div style="display:flex;flex-direction:column;background:white;">
+                    <div style="padding:1rem;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
+                        <span id="tnote-date" style="font-size:0.8rem;color:var(--text-muted);"></span>
+                        <div style="display:flex;gap:10px;">
+                            <span id="tnote-status" style="font-size:0.8rem;color:var(--success);"></span>
+                            <button class="btn btn-primary" style="padding:6px 15px;font-size:0.85rem;" onclick="saveCurrentTNote()">Salvar</button>
+                            <button class="btn" style="padding:6px 15px;font-size:0.85rem;background:#fee2e2;color:#ef4444;" onclick="deleteCurrentTNote()">Excluir</button>
+                        </div>
+                    </div>
+                    <input type="text" id="tnote-title" placeholder="Título" style="width:100%;padding:1.5rem 2rem 0.5rem;border:none;font-size:1.5rem;font-weight:700;outline:none;">
+                    <textarea id="tnote-body" style="flex:1;width:100%;padding:0.5rem 2rem 2rem;border:none;outline:none;font-size:1.1rem;line-height:1.6;resize:none;" placeholder="Comece a escrever..."></textarea>
                 </div>
             </div>
         </section>

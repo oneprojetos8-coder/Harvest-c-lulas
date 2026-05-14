@@ -1050,6 +1050,7 @@ function switchView(viewId) {
     }
     if (viewId === 'pastor-cells') renderAllCells();
     if (viewId === 'pastor-notes') loadPastorNotes();
+    if (viewId === 'treasurer-notes') loadTreasurerNotes();
     if (viewId === 'pastor-financial') updateFinancialDashboard();
     if (viewId === 'cell-details') {
         // Detalhes individuais já chamam o próprio update
@@ -2085,9 +2086,11 @@ function updateManualTransactionsTable() {
                 <td>${displayCategory}</td>
                 <td>${formatBRL(tx.amount)}</td>
                 <td>${displayDescription}</td>
-                <td style="text-align:center">
-                    <button title="Editar" onclick="openTxEdit('${tx.id}')" style="background:#e3f2fd;color:#1976d2;border:none;border-radius:6px;padding:4px 7px;cursor:pointer;margin-right:4px;">&#9998;</button>
-                    <button title="Excluir" onclick="deleteTx('${tx.id}')" style="background:#fee2e2;color:#ef4444;border:none;border-radius:6px;padding:4px 7px;cursor:pointer;">&#128465;</button>
+                <td style="text-align:center;white-space:nowrap;">
+                    <div style="display:inline-flex;gap:6px;align-items:center;">
+                        <button title="Editar" onclick="openTxEdit('${tx.id}')" style="display:inline-block;background:#dbeafe;color:#1d4ed8;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:600;">Editar</button>
+                        <button title="Excluir" onclick="deleteTx('${tx.id}')" style="display:inline-block;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:600;">Apagar</button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -2223,4 +2226,102 @@ window.openTxEdit = openTxEdit;
 window.closeTxModal = closeTxModal;
 window.saveTxEdit = saveTxEdit;
 window.deleteTx = deleteTx;
+
+// === ANOTAÇÕES DO TESOUREIRO ===
+let _tnotes = [];
+let _currentTNoteId = null;
+
+async function loadTreasurerNotes() {
+    const pastorId = sessionStorage.getItem('cbna_pastor_id');
+    if (!pastorId) return;
+    const { data, error } = await supabaseClient
+        .from('pastor_notes')
+        .select('*')
+        .eq('pastor_id', pastorId)
+        .eq('note_type', 'treasurer')
+        .order('updated_at', { ascending: false });
+    if (error) { console.error('Erro ao carregar anotações do tesoureiro:', error); return; }
+    _tnotes = data || [];
+    renderTNotesList();
+    if (_tnotes.length > 0) selectTNote(_tnotes[0].id);
+    else { document.getElementById('tnote-title').value = ''; document.getElementById('tnote-body').value = ''; }
+}
+
+function renderTNotesList() {
+    const list = document.getElementById('tnotes-list');
+    if (!list) return;
+    if (_tnotes.length === 0) {
+        list.innerHTML = '<p style="padding:1rem;color:#aaa;font-size:0.85rem;">Nenhuma anotação ainda.</p>';
+        return;
+    }
+    list.innerHTML = _tnotes.map(n => `
+        <div onclick="selectTNote('${n.id}')" id="tnote-item-${n.id}" style="padding:0.9rem 1rem;cursor:pointer;border-bottom:1px solid #eee;${_currentTNoteId===n.id?'background:#e8f4fd;':''}">
+            <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title||'Sem título'}</div>
+            <div style="font-size:0.75rem;color:#aaa;margin-top:2px;">${new Date(n.updated_at).toLocaleDateString('pt-BR')}</div>
+        </div>
+    `).join('');
+}
+
+function selectTNote(id) {
+    _currentTNoteId = id;
+    const note = _tnotes.find(n => String(n.id) === String(id));
+    if (!note) return;
+    document.getElementById('tnote-title').value = note.title || '';
+    document.getElementById('tnote-body').value = note.content || '';
+    document.getElementById('tnote-date').innerText = 'Atualizado: ' + new Date(note.updated_at).toLocaleString('pt-BR');
+    document.getElementById('tnote-status').innerText = '';
+    renderTNotesList();
+}
+
+async function createNewTNote() {
+    const pastorId = sessionStorage.getItem('cbna_pastor_id');
+    if (!pastorId) return;
+    const { data, error } = await supabaseClient
+        .from('pastor_notes')
+        .insert([{ pastor_id: pastorId, title: 'Nova nota', content: '', note_type: 'treasurer' }])
+        .select().single();
+    if (error) { alert('Erro ao criar nota: ' + error.message); return; }
+    _tnotes.unshift(data);
+    renderTNotesList();
+    selectTNote(data.id);
+}
+
+async function saveCurrentTNote() {
+    if (!_currentTNoteId) return;
+    const title = document.getElementById('tnote-title').value.trim() || 'Sem título';
+    const content = document.getElementById('tnote-body').value;
+    const { error } = await supabaseClient
+        .from('pastor_notes')
+        .update({ title, content, updated_at: new Date().toISOString() })
+        .eq('id', _currentTNoteId);
+    if (error) { alert('Erro ao salvar: ' + error.message); return; }
+    const note = _tnotes.find(n => String(n.id) === String(_currentTNoteId));
+    if (note) { note.title = title; note.content = content; note.updated_at = new Date().toISOString(); }
+    document.getElementById('tnote-status').innerText = '✓ Salvo';
+    setTimeout(() => { const s = document.getElementById('tnote-status'); if (s) s.innerText = ''; }, 2000);
+    renderTNotesList();
+}
+
+async function deleteCurrentTNote() {
+    if (!_currentTNoteId) return;
+    if (!confirm('Excluir esta anotação?')) return;
+    const { error } = await supabaseClient
+        .from('pastor_notes')
+        .delete()
+        .eq('id', _currentTNoteId);
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    _tnotes = _tnotes.filter(n => String(n.id) !== String(_currentTNoteId));
+    _currentTNoteId = null;
+    document.getElementById('tnote-title').value = '';
+    document.getElementById('tnote-body').value = '';
+    document.getElementById('tnote-date').innerText = '';
+    renderTNotesList();
+}
+
+// Expor funções de anotações do tesoureiro no window
+window.createNewTNote = createNewTNote;
+window.saveCurrentTNote = saveCurrentTNote;
+window.deleteCurrentTNote = deleteCurrentTNote;
+window.selectTNote = selectTNote;
+
 
